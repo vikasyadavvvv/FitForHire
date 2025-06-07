@@ -3,6 +3,7 @@ import { requireAuth } from "@clerk/express";
 import { v2 as cloudinary } from "cloudinary";
 import mammoth from "mammoth";
 import path from "path";
+import multer from "multer";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import dotenv from "dotenv";
 import { getFitnessModel } from "../config/geminiConfig.js";
@@ -19,136 +20,143 @@ cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true, // Enforce HTTPS
-  upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET // Optional but recommended
+  secure: true
 });
 
-// Enhanced text extractor with better error handling
-const extractResumeText = async (buffer, ext) => {
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-  
-  if (buffer.length > MAX_FILE_SIZE) {
-    throw new Error("File too large (max 5MB)");
-  }
+// Multer setup (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
 
-  try {
-    if (ext === "pdf") {
-      const data = await pdfParse(buffer);
-      if (!data.text || data.text.trim().length < 50) { // Minimum 50 chars
-        throw new Error("PDF appears to be empty or unreadable");
+const FILE_TYPE_VALIDATOR = {
+  'application/pdf': {
+    ext: 'pdf',
+    validate: async (buffer) => {
+      try {
+        const { text } = await pdfParse(buffer);
+        return text && text.trim().length >= 50;
+      } catch {
+        return false;
       }
-      return data.text;
-    } else if (ext === "docx") {
-      const { value } = await mammoth.extractRawText({ buffer });
-      if (!value || value.trim().length < 50) {
-        throw new Error("DOCX appears to be empty or unreadable");
-      }
-      return value;
     }
-    throw new Error("Unsupported file type");
-  } catch (err) {
-    console.error(`Text extraction error (${ext}):`, err.message);
-    throw err; // Re-throw with original error
+  },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
+    ext: 'docx',
+    validate: async (buffer) => {
+      try {
+        const { value } = await mammoth.extractRawText({ buffer });
+        return value && value.trim().length >= 50;
+      } catch {
+        return false;
+      }
+    }
   }
 };
 
-// Supported file types
-const SUPPORTED_MIMETYPES = {
-  'application/pdf': 'pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+const processResumeFile = async (fileBuffer, fileType) => {
+  const MIN_TEXT_LENGTH = 50;
+
+  if (fileType === 'pdf') {
+    const { text } = await pdfParse(fileBuffer);
+    if (!text || text.trim().length < MIN_TEXT_LENGTH) throw new Error("PDF unreadable");
+    return {
+      text,
+      truncatedText: text.substring(0, 1000) + (text.length > 1000 ? "..." : "")
+    };
+  }
+
+  if (fileType === 'docx') {
+    const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
+    if (!value || value.trim().length < MIN_TEXT_LENGTH) throw new Error("DOCX unreadable");
+    return {
+      text: value,
+      truncatedText: value.substring(0, 1000) + (value.length > 1000 ? "..." : "")
+    };
+  }
+
+  throw new Error("Unsupported file format");
 };
 
-router.post("/resume", requireAuth(), async (req, res) => {
+router.post("/resume", requireAuth(), upload.single("resume"), async (req, res) => {
   try {
-    // 1. Validate file exists
-    if (!req.files?.resume) {
-      return res.status(400).json({ 
-        message: "No file uploaded",
-        supported_formats: Object.keys(SUPPORTED_MIMETYPES)
-      });
+    if (!req.file) {
+      return res.status(400).json({ code: 'NO_FILE', message: 'No file uploaded' });
     }
 
-    const { name: originalname, data, mimetype, size } = req.files.resume;
+    const { originalname: filename, mimetype, buffer, size } = req.file;
+    const fileTypeConfig = FILE_TYPE_VALIDATOR[mimetype];
 
-    // 2. Validate file type
-    const ext = SUPPORTED_MIMETYPES[mimetype];
-    if (!ext) {
-      return res.status(400).json({
-        message: "Unsupported file type",
-        supported_types: Object.keys(SUPPORTED_MIMETYPES)
-      });
+    if (!fileTypeConfig) {
+      return res.status(400).json({ code: 'UNSUPPORTED_TYPE', message: 'Unsupported file type' });
     }
 
-    // 3. Validate file size (5MB max)
-    const MAX_SIZE = 5 * 1024 * 1024;
-    if (size > MAX_SIZE) {
-      return res.status(400).json({
-        message: `File too large (max ${MAX_SIZE/1024/1024}MB)`,
-        actual_size: `${(size/1024/1024).toFixed(2)}MB`
-      });
+    const isValid = await fileTypeConfig.validate(buffer);
+    if (!isValid) {
+      return res.status(400).json({ code: 'INVALID_CONTENT', message: 'Unreadable or empty file' });
     }
 
-    // 4. Upload to Cloudinary with error handling
-    let uploadResult;
-    try {
-      uploadResult = await cloudinary.uploader.upload(
-        `data:${mimetype};base64,${data.toString("base64")}`,
+    const public_id = `user_${req.user.id}_${Date.now()}`;
+
+    const cloudRes = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
         {
-          resource_type: "raw",
           folder: "resumes",
-          public_id: `${Date.now()}_${path.parse(originalname).name}`,
-          upload_preset: "resumes_preset", // Recommended for better control
-          quality_analysis: true // Optional: get quality metrics
-        }
+          public_id,
+          resource_type: "auto",
+          tags: ["temp_resumes"],
+          context: `user_id=${req.user.id}|filename=${filename}`
+        },
+        (err, result) => (err ? reject(err) : resolve(result))
       );
-    } catch (cloudinaryErr) {
-      console.error("Cloudinary upload failed:", cloudinaryErr.message);
-      throw new Error("File storage service unavailable");
-    }
+      streamifier.createReadStream(buffer).pipe(stream);
+    });
 
-    // 5. Extract text with validation
-    const extractedText = await extractResumeText(data, ext);
+    const { text, truncatedText } = await processResumeFile(buffer, fileTypeConfig.ext);
 
-    // 6. Success response
-    res.json({
+    res.status(200).json({
       success: true,
-      url: uploadResult.secure_url,
-      publicId: uploadResult.public_id,
-      originalFilename: originalname,
-      extractedText: extractedText.substring(0, 1000) + "...", // Sample text
-      fullTextLength: extractedText.length,
-      uploadInfo: {
-        bytes: uploadResult.bytes,
-        format: uploadResult.format,
-        created_at: uploadResult.created_at
+      fileInfo: {
+        originalName: filename,
+        fileType: fileTypeConfig.ext,
+        size,
+        pages: cloudRes.pages || 1
+      },
+      content: {
+        sample: truncatedText,
+        fullLength: text.length,
+        wordCount: text.split(/\s+/).length
+      },
+      storage: {
+        url: cloudRes.secure_url,
+        publicId: cloudRes.public_id,
+        bytesStored: cloudRes.bytes
+      },
+      timestamps: {
+        uploadedAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       }
     });
+  } catch (error) {
+    console.error("Upload processing error:", error);
+    let status = 500;
+    let code = "PROCESSING_ERROR";
 
-  } catch (err) {
-    console.error("Resume upload error:", err);
-
-    // Specific error responses
-    if (err.message.includes("Unsupported") || err.message.includes("Failed to parse")) {
-      return res.status(400).json({
-        message: err.message,
-        supported_types: ["PDF", "DOCX"]
-      });
+    if (error.message.includes("quota")) {
+      status = 507;
+      code = "STORAGE_QUOTA_FULL";
+    } else if (error.message.includes("unreadable")) {
+      status = 400;
+      code = "INVALID_CONTENT";
+    } else if (error.message.includes("Unsupported")) {
+      status = 400;
+      code = "UNSUPPORTED_TYPE";
     }
 
-    if (err.message.includes("too large")) {
-      return res.status(413).json({ 
-        message: err.message,
-        max_size: "5MB"
-      });
-    }
-
-    // Generic server error
-    res.status(500).json({ 
-      message: "Resume processing failed",
-      ...(process.env.NODE_ENV === 'development' && { error: err.message })
-    });
+    res.status(status).json({ code, message: error.message });
   }
 });
+
 
 // ─────────────────────────────────────────────────────────────
 // 📍 ROUTE 2: Resume + JD Analysis (AI)
