@@ -4,13 +4,11 @@ import dotenv from "dotenv";
 import cors from "cors";
 import fileUpload from "express-fileupload";
 import resumeRoutes from "./routes/resume.js";
-import { clerkMiddleware } from '@clerk/express';
 
 dotenv.config();
 const app = express();
 
 // Clerk middleware
-app.use(clerkMiddleware());
 
 // File upload config
 app.use(
