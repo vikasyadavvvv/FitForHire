@@ -36,6 +36,8 @@ const whitelist = [
   "http://localhost:5173",
   "https://fit-for-hire-livid.vercel.app",
   /^https:\/\/fit-for-hire-livid.*\.vercel\.app$/,
+  "https://fit-for-hire-oiuw6vwrc-vikas-projects-4cf277e1.vercel.app", // <-- Add this
+
 ];
 
 const corsOptions = {
