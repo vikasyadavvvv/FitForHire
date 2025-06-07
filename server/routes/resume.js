@@ -15,83 +15,140 @@ dotenv.config();               // ⬅️  load .env first
 
 const router = express.Router();
 
-// Cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true, // Enforce HTTPS
+  upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET // Optional but recommended
 });
 
-// ✅ New universal text extractor
+// Enhanced text extractor with better error handling
 const extractResumeText = async (buffer, ext) => {
-  if (ext === "pdf") {
-    try {
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error("File too large (max 5MB)");
+  }
+
+  try {
+    if (ext === "pdf") {
       const data = await pdfParse(buffer);
-      return data.text || "";
-    } catch (err) {
-      throw new Error("PDF parsing failed");
-    }
-  } else if (ext === "docx") {
-    try {
+      if (!data.text || data.text.trim().length < 50) { // Minimum 50 chars
+        throw new Error("PDF appears to be empty or unreadable");
+      }
+      return data.text;
+    } else if (ext === "docx") {
       const { value } = await mammoth.extractRawText({ buffer });
-      return value || "";
-    } catch (err) {
-      throw new Error("DOCX parsing failed");
+      if (!value || value.trim().length < 50) {
+        throw new Error("DOCX appears to be empty or unreadable");
+      }
+      return value;
     }
-  } else {
     throw new Error("Unsupported file type");
+  } catch (err) {
+    console.error(`Text extraction error (${ext}):`, err.message);
+    throw err; // Re-throw with original error
   }
 };
 
-/* 
-======================================
-📍 ROUTE 1: Resume Upload + Extraction
-POST /api/resume
-======================================
-*/
+// Supported file types
+const SUPPORTED_MIMETYPES = {
+  'application/pdf': 'pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+};
+
 router.post("/resume", requireAuth(), async (req, res) => {
   try {
-    if (!req.files || !req.files.resume) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-
-    const resumeFile = req.files.resume;
-    const { name: originalname, data, mimetype } = resumeFile;
-    const ext = path.extname(originalname).slice(1).toLowerCase();
-
-    // Upload to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(
-      `data:${mimetype};base64,${data.toString("base64")}`,
-      {
-        resource_type: "raw",
-        folder: "resumes",
-        public_id: `${Date.now()}_${path.parse(originalname).name}`,
-      }
-    );
-
-    // ✅ Extract text
-    const extractedText = await extractResumeText(data, ext);
-
-    res.json({
-      url: uploadResult.secure_url,
-      publicId: uploadResult.public_id,
-      originalFilename: originalname,
-      extractedText,
-    });
-
-  } catch (err) {
-    console.error("Resume upload error:", err.message);
-
-    if (err.message.includes("parsing failed")) {
-      return res.status(400).json({
-        message: "Failed to parse resume. Please upload a supported and valid PDF or DOCX file.",
+    // 1. Validate file exists
+    if (!req.files?.resume) {
+      return res.status(400).json({ 
+        message: "No file uploaded",
+        supported_formats: Object.keys(SUPPORTED_MIMETYPES)
       });
     }
 
-    res.status(500).json({ message: "Resume upload failed due to server error." });
+    const { name: originalname, data, mimetype, size } = req.files.resume;
+
+    // 2. Validate file type
+    const ext = SUPPORTED_MIMETYPES[mimetype];
+    if (!ext) {
+      return res.status(400).json({
+        message: "Unsupported file type",
+        supported_types: Object.keys(SUPPORTED_MIMETYPES)
+      });
+    }
+
+    // 3. Validate file size (5MB max)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (size > MAX_SIZE) {
+      return res.status(400).json({
+        message: `File too large (max ${MAX_SIZE/1024/1024}MB)`,
+        actual_size: `${(size/1024/1024).toFixed(2)}MB`
+      });
+    }
+
+    // 4. Upload to Cloudinary with error handling
+    let uploadResult;
+    try {
+      uploadResult = await cloudinary.uploader.upload(
+        `data:${mimetype};base64,${data.toString("base64")}`,
+        {
+          resource_type: "raw",
+          folder: "resumes",
+          public_id: `${Date.now()}_${path.parse(originalname).name}`,
+          upload_preset: "resumes_preset", // Recommended for better control
+          quality_analysis: true // Optional: get quality metrics
+        }
+      );
+    } catch (cloudinaryErr) {
+      console.error("Cloudinary upload failed:", cloudinaryErr.message);
+      throw new Error("File storage service unavailable");
+    }
+
+    // 5. Extract text with validation
+    const extractedText = await extractResumeText(data, ext);
+
+    // 6. Success response
+    res.json({
+      success: true,
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      originalFilename: originalname,
+      extractedText: extractedText.substring(0, 1000) + "...", // Sample text
+      fullTextLength: extractedText.length,
+      uploadInfo: {
+        bytes: uploadResult.bytes,
+        format: uploadResult.format,
+        created_at: uploadResult.created_at
+      }
+    });
+
+  } catch (err) {
+    console.error("Resume upload error:", err);
+
+    // Specific error responses
+    if (err.message.includes("Unsupported") || err.message.includes("Failed to parse")) {
+      return res.status(400).json({
+        message: err.message,
+        supported_types: ["PDF", "DOCX"]
+      });
+    }
+
+    if (err.message.includes("too large")) {
+      return res.status(413).json({ 
+        message: err.message,
+        max_size: "5MB"
+      });
+    }
+
+    // Generic server error
+    res.status(500).json({ 
+      message: "Resume processing failed",
+      ...(process.env.NODE_ENV === 'development' && { error: err.message })
+    });
   }
 });
-
 
 // ─────────────────────────────────────────────────────────────
 // 📍 ROUTE 2: Resume + JD Analysis (AI)
