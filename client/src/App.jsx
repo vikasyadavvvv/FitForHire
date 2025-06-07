@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Routes, Route, Navigate, useNavigate, HashRouter } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, HashRouter } from "react-router-dom";
 import { 
   SignedIn, 
   SignedOut, 
@@ -33,7 +33,7 @@ console.log('Auth state:', { isLoaded, userId });
             </h1>
             <div className="mr-10">
               <UserButton
-                fallbackRedirectUrl="/sign-in"
+                afterSignOutUrl="/sign-in"
                 appearance={{
                   elements: {
                     userButtonAvatarBox:
@@ -68,8 +68,8 @@ console.log('Auth state:', { isLoaded, userId });
                 <SignIn 
                   routing="path"
                   path="/sign-in"
-                  fallbackRedirectUrl ="/upload"
-                  forceRedirectUrl="/upload"
+                  afterSignInUrl ="/upload"
+                  afterSignUpUrl="/upload"
                 />
               </div>
             }
@@ -81,8 +81,8 @@ console.log('Auth state:', { isLoaded, userId });
                 <SignUp 
                   routing="path"
                   path="/sign-up"
-                  fallbackRedirectUrl="/upload"
-                  forceRedirectUrl="/upload"
+                  afterSignUpUrl="/upload"
+                  afterSignInUrl="/upload"
                 />
               </div>
             }
@@ -96,9 +96,11 @@ console.log('Auth state:', { isLoaded, userId });
 
 export default function App() {
   return (
+   
+    <HashRouter>
 
-         <HashRouter>
         <AppRoutes />
-         </HashRouter>
+
+    </HashRouter>
   );
 }
