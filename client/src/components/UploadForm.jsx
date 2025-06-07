@@ -82,7 +82,7 @@ export default function UploadForm() {
     const formData = new FormData();
     formData.append("resume", file);
 
-    const res = await fetch("http://localhost:5000/api/resume/resume", {
+    const res = await fetch("https://fitforhire-production.up.railway.app/api/resume/resume", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
