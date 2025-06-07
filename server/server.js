@@ -20,16 +20,11 @@ cloudinary.config({
 /* -------------------------------------------------------------------------- */
 /*                                    CORS                                    */
 /* -------------------------------------------------------------------------- */
-// Vercel assigns different random sub‑domains on every deployment.  
-// Maintain the ones you actually use.  Add more in FRONTEND_URLS (comma‑separated)
-// or just whitelist everything in dev while locking down prod.
-const defaultOrigins = [
+// Allow only local dev and the single production URL
+const allowedOrigins = [
   "http://localhost:5173",
-  "https://fit-for-hire-29xai6dvm-vikas-projects-4cf277e1.vercel.app",
+  "https://fit-for-hire-livid.vercel.app",
 ];
-
-const extraOrigins = process.env.FRONTEND_URLS?.split(",").map(o => o.trim()) || [];
-const allowedOrigins = [...new Set([...defaultOrigins, ...extraOrigins])];
 
 app.use(
   cors({
