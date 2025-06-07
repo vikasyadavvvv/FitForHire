@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, HashRouter } from "react-router-dom";
 import { 
   SignedIn, 
   SignedOut, 
@@ -96,9 +96,9 @@ console.log('Auth state:', { isLoaded, userId });
 
 export default function App() {
   return (
-   
-      <BrowserRouter>
+
+         <HashRouter>
         <AppRoutes />
-      </BrowserRouter>
+         </HashRouter>
   );
 }
