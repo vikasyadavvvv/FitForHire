@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, UserButton, SignIn } from "@clerk/clerk-react";
 
 import UploadForm from "./components/UploadForm";
 import ResumeAnalyzer from "./components/ResumeAnalyzer";
@@ -19,7 +19,7 @@ export default function App() {
             </h1>
             <div className="mr-10">
               <UserButton
-                afterSignOutUrl="https://proper-tetra-73.accounts.dev/sign-in"
+                afterSignOutUrl="/sign-in" // redirect to SignIn page component on sign out
                 appearance={{
                   elements: {
                     userButtonAvatarBox:
@@ -39,6 +39,7 @@ export default function App() {
               path="/analyze"
               element={<ResumeAnalyzer resumeText={extractedResumeText} />}
             />
+            {/* Redirect any unknown route to /upload */}
             <Route path="*" element={<Navigate to="/upload" replace />} />
           </Routes>
         </div>
@@ -47,15 +48,13 @@ export default function App() {
       {/* -------- UNAUTHENTICATED -------- */}
       <SignedOut>
         <Routes>
+          {/* Render Clerk's SignIn component here */}
           <Route
-            path="*"
-            element={
-              <Navigate
-                to="https://proper-tetra-73.accounts.dev/sign-in"
-                replace
-              />
-            }
+            path="/sign-in"
+            element={<SignIn path="/sign-in" routing="path" redirectUrl="/upload" />}
           />
+          {/* Redirect any unknown route to sign-in page */}
+          <Route path="*" element={<Navigate to="/sign-in" replace />} />
         </Routes>
       </SignedOut>
     </BrowserRouter>
