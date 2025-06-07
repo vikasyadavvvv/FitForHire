@@ -3,89 +3,96 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import resumeRoutes from "./routes/resume.js";
-import cloudinary from 'cloudinary';
-import { fileURLToPath } from 'url';
-import path from 'path';
-
-// Configure __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { v2 as cloudinary } from "cloudinary";
 
 dotenv.config();
 const app = express();
 
-// Cloudinary configuration
+/* -------------------------------------------------------------------------- */
+/*                                Cloudinary                                  */
+/* -------------------------------------------------------------------------- */
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// CORS Configuration
-const allowedOrigins = [
-  "https://fit-for-hire-ja7pnpmwm-vikas-projects-4cf277e1.vercel.app",
-  "https://fit-for-hire-ja7pnpmwm-vikas-projects-4cf277e1.vercel.app",
-  "http://localhost:5173"
+/* -------------------------------------------------------------------------- */
+/*                                    CORS                                    */
+/* -------------------------------------------------------------------------- */
+// Vercel assigns different random sub‑domains on every deployment.  
+// Maintain the ones you actually use.  Add more in FRONTEND_URLS (comma‑separated)
+// or just whitelist everything in dev while locking down prod.
+const defaultOrigins = [
+  "http://localhost:5173",
+  "https://fit-for-hire-29xai6dvm-vikas-projects-4cf277e1.vercel.app",
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
+const extraOrigins = process.env.FRONTEND_URLS?.split(",").map(o => o.trim()) || [];
+const allowedOrigins = [...new Set([...defaultOrigins, ...extraOrigins])];
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`Not allowed by CORS: ${origin}`));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 200,
+  })
+);
+app.options("*", cors());
 
-// Middleware
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+/* -------------------------------------------------------------------------- */
+/*                            Body‑parser limits                               */
+/* -------------------------------------------------------------------------- */
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Database connection with retry logic
+/* -------------------------------------------------------------------------- */
+/*                             MongoDB connect                                */
+/* -------------------------------------------------------------------------- */
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      retryWrites: true,
-      w: 'majority'
+      serverSelectionTimeoutMS: 5000,
     });
-    console.log('MongoDB connected');
+    console.log("MongoDB connected ✅");
   } catch (err) {
-    console.error('MongoDB connection error:', err);
-    setTimeout(connectDB, 5000); // Retry after 5 seconds
+    console.error("MongoDB connection error ❌", err.message);
+    process.exit(1);
   }
 };
 connectDB();
 
-// Routes
+/* -------------------------------------------------------------------------- */
+/*                                   Routes                                   */
+/* -------------------------------------------------------------------------- */
 app.use("/api/resume", resumeRoutes);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date() });
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: "OK", time: new Date() });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Internal Server Error',
-    message: err.message 
-  });
+/* -------------------------------------------------------------------------- */
+/*                             404 + Error handler                             */
+/* -------------------------------------------------------------------------- */
+app.use((req, res) => {
+  res.status(404).json({ error: `Route ${req.originalUrl} not found` });
 });
 
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
+});
+
+/* -------------------------------------------------------------------------- */
+/*                                 Start‑up                                   */
+/* -------------------------------------------------------------------------- */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+  console.log("Allowed origins:", allowedOrigins.join(", "));
 });
