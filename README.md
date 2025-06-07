@@ -65,7 +65,7 @@ FitForHire is an intelligent resume analysis tool that leverages Google's Gemini
    git clone https://github.com/yourusername/FitForHire.git
    cd FitForHire
 
-   # Frontend
+ # Frontend
 cd client
 npm install
 
