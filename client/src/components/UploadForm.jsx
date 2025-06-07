@@ -78,50 +78,31 @@ export default function UploadForm() {
   setMsg("");
 
   try {
-    if (!file) {
-      setMsg("❌ Please choose a PDF or DOCX first.");
-      setLoading(false);
-      return;
-    }
+    const token = await getToken();
+    const formData = new FormData();
+    formData.append("resume", file);
 
-    // 1️⃣  Turn the File into a base-64 Data-URI string
-    const fileBase64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);      // data:<mime>;base64,....
-      reader.onerror = reject;
+    const res = await fetch("https://fitforhire-production.up.railway.app//api/resume/resume", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
     });
 
-    // 2️⃣  Build JSON payload
-    const payload = {
-      fileBase64,
-      fileName: file.name,
-      fileType: file.type.endsWith("pdf") ? "pdf" : "docx",
-    };
-
-    // 3️⃣  Send JSON to the correct endpoint  (…/api/resume   NOT …/resume/resume)
-    const token = await getToken();
-
-    const res = await fetch(
-      "https://fitforhire-production.up.railway.app/api/resume/resume",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",          // <-- must be JSON
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+    if (!res.ok) {
+      throw new Error("Upload failed");
+    }
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Upload failed");
-
     setMsg("✅ Resume uploaded successfully!");
-    navigate("/analyze", { state: { resumeText: data.content.sample } });
+
+    // Pass resume text in navigation state
+    navigate('/analyze', { state: { resumeText: data.extractedText } });
+
   } catch (err) {
     console.error(err);
-    setMsg(`❌ Upload failed: ${err.message}`);
+    setMsg("❌ Upload failed. Please try again.");
   } finally {
     setLoading(false);
   }
@@ -281,4 +262,3 @@ Try our free and fast <span className="text-blue-400 font-semibold">AI-powered</
 
 );
 }
-

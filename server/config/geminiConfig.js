@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-export const getFitnessModel = () =>
+const getFitnessModel = () =>
   genAI.getGenerativeModel({
     model: "gemini-1.5-flash-latest", // Updated to latest flash model
     generationConfig: {
@@ -14,3 +14,4 @@ export const getFitnessModel = () =>
       responseMimeType: "application/json"
     }
   });
+export { genAI, getFitnessModel };

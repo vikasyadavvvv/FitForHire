@@ -2,6 +2,7 @@ import express from "express";
 import { requireAuth } from "@clerk/express";
 import { v2 as cloudinary } from "cloudinary";
 import mammoth from "mammoth";
+import path from "path";
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import dotenv from "dotenv";
 import { getFitnessModel } from "../config/geminiConfig.js";
@@ -14,167 +15,80 @@ dotenv.config();               // ⬅️  load .env first
 
 const router = express.Router();
 
+// Cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
 });
 
-const FILE_TYPE_VALIDATOR = {
-  pdf: {
-    validate: async (buffer) => {
-      try {
-        const { text } = await pdfParse(buffer);
-        return text && text.trim().length >= 50;
-      } catch {
-        return false;
-      }
-    },
-  },
-  docx: {
-    validate: async (buffer) => {
-      try {
-        const { value } = await mammoth.extractRawText({ buffer });
-        return value && value.trim().length >= 50;
-      } catch {
-        return false;
-      }
-    },
-  },
+// ✅ New universal text extractor
+const extractResumeText = async (buffer, ext) => {
+  if (ext === "pdf") {
+    try {
+      const data = await pdfParse(buffer);
+      return data.text || "";
+    } catch (err) {
+      throw new Error("PDF parsing failed");
+    }
+  } else if (ext === "docx") {
+    try {
+      const { value } = await mammoth.extractRawText({ buffer });
+      return value || "";
+    } catch (err) {
+      throw new Error("DOCX parsing failed");
+    }
+  } else {
+    throw new Error("Unsupported file type");
+  }
 };
 
-const processResumeFile = async (fileBuffer, fileType) => {
-  const MIN_TEXT_LENGTH = 50;
-
-  if (fileType === "pdf") {
-    const { text } = await pdfParse(fileBuffer);
-    if (!text || text.trim().length < MIN_TEXT_LENGTH)
-      throw new Error("PDF unreadable");
-    return {
-      text,
-      truncatedText: text.substring(0, 1000) + (text.length > 1000 ? "..." : ""),
-    };
-  }
-
-  if (fileType === "docx") {
-    const { value } = await mammoth.extractRawText({ buffer: fileBuffer });
-    if (!value || value.trim().length < MIN_TEXT_LENGTH)
-      throw new Error("DOCX unreadable");
-    return {
-      text: value,
-      truncatedText: value.substring(0, 1000) + (value.length > 1000 ? "..." : ""),
-    };
-  }
-
-  throw new Error("Unsupported file format");
-};
-
-async function cleanup() {
+/* 
+======================================
+📍 ROUTE 1: Resume Upload + Extraction
+POST /api/resume
+======================================
+*/
+router.post("/resume", requireAuth(), async (req, res) => {
   try {
-    const result = await cloudinary.api.delete_resources_by_prefix("resumes/");
-    console.log("Cleanup complete:", result);
+    if (!req.files || !req.files.resume) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const resumeFile = req.files.resume;
+    const { name: originalname, data, mimetype } = resumeFile;
+    const ext = path.extname(originalname).slice(1).toLowerCase();
+
+    // Upload to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(
+      `data:${mimetype};base64,${data.toString("base64")}`,
+      {
+        resource_type: "raw",
+        folder: "resumes",
+        public_id: `${Date.now()}_${path.parse(originalname).name}`,
+      }
+    );
+
+    // ✅ Extract text
+    const extractedText = await extractResumeText(data, ext);
+
+    res.json({
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      originalFilename: originalname,
+      extractedText,
+    });
+
   } catch (err) {
-    console.error("Error during cleanup:", err);
-  }
-}
-// Uncomment to run cleanup on server start (use cautiously)
-// cleanup();
+    console.error("Resume upload error:", err.message);
 
-router.post("/resume", requireAuth(), express.json({ limit: "15mb" }), async (req, res) => {
-  try {
-    // Expecting JSON body with these keys from frontend:
-    // { fileBase64: "data:application/pdf;base64,....", fileName: "resume.pdf", fileType: "pdf" }
-    const { fileBase64, fileName, fileType } = req.body;
-
-    if (!fileBase64 || !fileName || !fileType) {
-      return res.status(400).json({ code: "NO_FILE", message: "Missing file data" });
+    if (err.message.includes("parsing failed")) {
+      return res.status(400).json({
+        message: "Failed to parse resume. Please upload a supported and valid PDF or DOCX file.",
+      });
     }
 
-    // Validate file type supported
-    if (!["pdf", "docx"].includes(fileType.toLowerCase())) {
-      return res.status(400).json({ code: "UNSUPPORTED_TYPE", message: "Unsupported file type" });
-    }
-
-    // Extract base64 string from data URI
-    const matches = fileBase64.match(/^data:(.+);base64,(.+)$/);
-    if (!matches) {
-      return res.status(400).json({ code: "INVALID_BASE64", message: "Invalid base64 string" });
-    }
-    const base64Data = matches[2];
-    const buffer = Buffer.from(base64Data, "base64");
-
-    // Validate file content by parsing
-    const isValid = await FILE_TYPE_VALIDATOR[fileType.toLowerCase()].validate(buffer);
-    if (!isValid) {
-      return res.status(400).json({ code: "INVALID_CONTENT", message: "Unreadable or empty file" });
-    }
-
-    // Upload to Cloudinary using upload_stream
-    const public_id = `user_${req.user.id}_${Date.now()}`;
-    const cloudRes = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: "resumes",
-          public_id,
-          resource_type: "raw",
-          tags: ["temp_resumes"],
-          context: `user_id=${req.user.id}|filename=${fileName}`,
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      streamifier.createReadStream(buffer).pipe(stream);
-    });
-
-    // Extract text content for response
-    const { text, truncatedText } = await processResumeFile(buffer, fileType.toLowerCase());
-
-    res.status(200).json({
-      success: true,
-      fileInfo: {
-        originalName: fileName,
-        fileType,
-        size: buffer.length,
-      },
-      content: {
-        sample: truncatedText,
-        fullLength: text.length,
-        wordCount: text.split(/\s+/).length,
-      },
-      storage: {
-        url: cloudRes.secure_url,
-        publicId: cloudRes.public_id,
-        bytesStored: cloudRes.bytes,
-      },
-      timestamps: {
-        uploadedAt: new Date(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      },
-    });
-  } catch (error) {
-    console.error("Upload processing error:", error);
-
-    let status = 500;
-    let code = "PROCESSING_ERROR";
-
-    if (error.message.includes("quota")) {
-      status = 507;
-      code = "STORAGE_QUOTA_FULL";
-    } else if (error.message.includes("unreadable")) {
-      status = 400;
-      code = "INVALID_CONTENT";
-    } else if (error.message.includes("Unsupported")) {
-      status = 400;
-      code = "UNSUPPORTED_TYPE";
-    } else if (error.message.includes("base64")) {
-      status = 400;
-      code = "INVALID_BASE64";
-    }
-
-    res.status(status).json({ code, message: error.message });
+    res.status(500).json({ message: "Resume upload failed due to server error." });
   }
 });
 

@@ -1,5 +1,5 @@
 // utils/atsDetector.js
-const ISSUE_POINTS = 10;              // points deducted per warning (tweak)
+const ISSUE_POINTS = 10; // points deducted per warning (tweak)
 
 export function detectATSIssues(text) {
   const warnings = [];
@@ -34,4 +34,3 @@ export function detectATSIssues(text) {
 export function calcATSScore(warnings) {
   return Math.max(0, 100 - warnings.length * ISSUE_POINTS);
 }
-
