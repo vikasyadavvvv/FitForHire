@@ -19,7 +19,7 @@ export default function App() {
             </h1>
             <div className="mr-10">
               <UserButton
-                afterSignOutUrl="/sign-in" // redirect to SignIn page component on sign out
+                afterSignOutUrl="/sign-in"
                 appearance={{
                   elements: {
                     userButtonAvatarBox:
@@ -39,7 +39,6 @@ export default function App() {
               path="/analyze"
               element={<ResumeAnalyzer resumeText={extractedResumeText} />}
             />
-            {/* Redirect any unknown route to /upload */}
             <Route path="*" element={<Navigate to="/upload" replace />} />
           </Routes>
         </div>
@@ -48,15 +47,18 @@ export default function App() {
       {/* -------- UNAUTHENTICATED -------- */}
       <SignedOut>
         <Routes>
-          {/* Render Clerk's SignIn component here */}
           <Route
             path="/sign-in"
-            element={<SignIn path="/sign-in" routing="path" redirectUrl="/upload" />}
+            element={
+              <div className="min-h-screen bg-black flex items-center justify-center">
+                <SignIn redirectUrl="/upload" />
+              </div>
+            }
           />
-          {/* Redirect any unknown route to sign-in page */}
           <Route path="*" element={<Navigate to="/sign-in" replace />} />
         </Routes>
       </SignedOut>
     </BrowserRouter>
   );
 }
+
