@@ -90,7 +90,7 @@ export default function ResumeAnalyzer() {
     try {
       const token = await getToken();
 
-      const res = await fetch("http://localhost:5000/api/resume/analyze", {
+      const res = await fetch("https://fitforhire-production.up.railway.app/api/resume/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
