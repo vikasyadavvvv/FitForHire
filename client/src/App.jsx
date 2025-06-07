@@ -6,18 +6,21 @@ import {
   UserButton, 
   SignIn, 
   SignUp,
-  ClerkProvider,
   RedirectToSignIn 
 } from "@clerk/clerk-react";
 
 import UploadForm from "./components/UploadForm";
 import ResumeAnalyzer from "./components/ResumeAnalyzer";
+import { useAuth } from '@clerk/clerk-react';
+// Inside your component:
 
-const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+
 
 function AppRoutes() {
   const [extractedResumeText, setExtractedResumeText] = useState("");
   const navigate = useNavigate();
+  const { isLoaded, userId } = useAuth();
+console.log('Auth state:', { isLoaded, userId });
 
   return (
     <>
@@ -30,7 +33,7 @@ function AppRoutes() {
             </h1>
             <div className="mr-10">
               <UserButton
-                afterSignOutUrl="/sign-in"
+                fallbackRedirectUrl="/sign-in"
                 appearance={{
                   elements: {
                     userButtonAvatarBox:
@@ -65,8 +68,8 @@ function AppRoutes() {
                 <SignIn 
                   routing="path"
                   path="/sign-in"
-                  afterSignInUrl="/upload"
-                  afterSignUpUrl="/upload"
+                  fallbackRedirectUrl ="/upload"
+                  forceRedirectUrl="/upload"
                 />
               </div>
             }
@@ -78,8 +81,8 @@ function AppRoutes() {
                 <SignUp 
                   routing="path"
                   path="/sign-up"
-                  afterSignUpUrl="/upload"
-                  afterSignInUrl="/upload"
+                  fallbackRedirectUrl="/upload"
+                  forceRedirectUrl="/upload"
                 />
               </div>
             }
@@ -92,20 +95,10 @@ function AppRoutes() {
 }
 
 export default function App() {
-  const navigate = useNavigate();
-
   return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      navigate={(to) => navigate(to)}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      afterSignInUrl="/upload"
-      afterSignUpUrl="/upload"
-    >
+   
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
-    </ClerkProvider>
   );
 }
