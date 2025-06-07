@@ -1,11 +1,6 @@
 import React, { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import {
-  SignedIn,
-  SignedOut,
-  SignUp,
-  UserButton,
-} from "@clerk/clerk-react";
+import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 
 import UploadForm from "./components/UploadForm";
 import ResumeAnalyzer from "./components/ResumeAnalyzer";
@@ -15,18 +10,16 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      {/* -------- AUTHENTICATED -------- */}
       <SignedIn>
-        {/* Page wrapper */}
         <div className="min-h-screen bg-black text-white">
-          {/* Header */}
           <header className="flex items-center justify-between p-4 bg-gradient-to-r from-black via-gray-900 to-black shadow-md border-b border-gray-800 animate-fade-in-down">
-            <h1 className="ml-8 text-4xl font-extrabold tracking-tight text-white flex items-center gap-2">
-              FitForHire
-              <span className="text-blue-500 text-3xl">✓</span>
+            <h1 className="ml-8 text-4xl font-extrabold tracking-tight flex items-center gap-2">
+              FitForHire <span className="text-blue-500 text-3xl">✓</span>
             </h1>
             <div className="mr-10">
               <UserButton
-                afterSignOutUrl="/sign-up" // Redirect to sign-up after sign-out
+                afterSignOutUrl="https://proper-tetra-73.accounts.dev/sign-in"
                 appearance={{
                   elements: {
                     userButtonAvatarBox:
@@ -37,7 +30,6 @@ export default function App() {
             </div>
           </header>
 
-          {/* Routes for signed-in users */}
           <Routes>
             <Route
               path="/upload"
@@ -52,25 +44,19 @@ export default function App() {
         </div>
       </SignedIn>
 
+      {/* -------- UNAUTHENTICATED -------- */}
       <SignedOut>
-        <div className="min-h-screen flex items-center justify-center bg-black">
-          <Routes>
-            <Route
-              path="/sign-up"
-              element={
-                <div className="w-full max-w-md">
-                  <SignUp 
-                    path="/sign-up"
-                    routing="path"
-                    redirectUrl="/upload" 
-                  />
-                </div>
-              }
-            />
-            {/* Force redirect to sign-up for any other path */}
-            <Route path="*" element={<Navigate to="/sign-up" replace />} />
-          </Routes>
-        </div>
+        <Routes>
+          <Route
+            path="*"
+            element={
+              <Navigate
+                to="https://proper-tetra-73.accounts.dev/sign-in"
+                replace
+              />
+            }
+          />
+        </Routes>
       </SignedOut>
     </BrowserRouter>
   );
