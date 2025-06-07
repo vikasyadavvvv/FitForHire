@@ -131,6 +131,9 @@ app.get("/api/health", (_req, res) => {
     dbState: mongoose.connection.readyState 
   });
 });
+app.get("/", (req, res) => {
+  res.send("🎯 FitForHire Backend is Running!");
+});
 
 /* -------------------------------------------------------------------------- */
 /*                            Enhanced Error Handling                         */
