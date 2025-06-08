@@ -30,13 +30,6 @@ mongoose.connect(process.env.MONGO_URI)
 // Routes
 app.use("/api/resume", resumeRoutes);
 
-app.get('/',(req,res)=>{
-  res.json({message:"Backend is Running",availableEndpoints: [
-      'POST /api/resume/generate-ats-resume',
-      'GET /api/health'
-    ]
-})
-})
 
 
 // Error handling middleware

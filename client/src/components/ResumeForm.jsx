@@ -54,103 +54,86 @@ const handleSubmit = async (e) => {
   setError(null);
 
   try {
-    // 1. Enhanced Validation
-    const requiredFields = {
+    // 1. Prepare data matching backend structure
+    const requestData = {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      skills: formData.skills?.length > 0,
-      education: formData.education?.length > 0
+      portfolioUrl: formData.portfolioUrl || "",
+      linkedinUrl: formData.linkedinUrl || "",
+      professionalSummary: formData.professionalSummary || "",
+      skills: formData.skills || [],
+      education: formData.education || [],
+      workExperience: formData.workExperience || [],
+      projects: formData.projects || [],
+      certificates: formData.certificates || [],
+      targetJobTitle: formData.targetJobTitle || "",
+      targetJobDescription: formData.targetJobDescription || ""
     };
 
-    const missingFields = Object.entries(requiredFields)
-      .filter(([_, value]) => !value)
-      .map(([key]) => key);
+    // 2. Validate required fields (matches backend validation)
+    const missingFields = [];
+    if (!requestData.name) missingFields.push('name');
+    if (!requestData.email) missingFields.push('email');
+    if (!requestData.phone) missingFields.push('phone');
+    if (requestData.skills.length === 0) missingFields.push('skills');
+    if (requestData.education.length === 0) missingFields.push('education');
 
-    if (missingFields.length) {
+    if (missingFields.length > 0) {
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
-    // 2. API Request
-    const response = await fetch('https://fitforhire-production.up.railway.app/api/resume/generate-ats-resume', {
+    // 3. Make API request
+    const response = await fetch('http://localhost:5000/api/resume/generate-ats-resume', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
-      body: JSON.stringify({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        portfolioUrl: formData.portfolioUrl || '',
-        linkedinUrl: formData.linkedinUrl || '',
-        professionalSummary: formData.professionalSummary || '',
-        skills: formData.skills || [],
-        education: formData.education || [],
-        workExperience: formData.workExperience || [],
-        projects: formData.projects || [],
-        certificates: formData.certificates || [],
-        targetJobTitle: formData.targetJobTitle || '',
-        targetJobDescription: formData.targetJobDescription || ''
-      })
+      body: JSON.stringify(requestData)
     });
 
-    // 3. Enhanced Response Handling
-    const responseText = await response.text();
+    // 4. Handle response (matches backend response structure)
+    const responseData = await response.json();
     
     if (!response.ok) {
-      // Try to parse error message if it's JSON
-      try {
-        const errorData = JSON.parse(responseText);
-        throw new Error(errorData.message || `Request failed with status ${response.status}`);
-      } catch {
-        throw new Error(responseText || `Request failed with status ${response.status}`);
-      }
+      throw new Error(responseData.message || `Request failed with status ${response.status}`);
     }
 
-    // Parse successful response
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse response:', responseText);
-      throw new Error('Server returned invalid JSON format');
+    // 5. Validate response structure (matches backend exactly)
+    const isValidResponse = (
+      responseData.success === true &&
+      responseData.atsResume &&
+      responseData.analysis &&
+      typeof responseData.analysis.atsScore === 'number' &&
+      Array.isArray(responseData.analysis.keywordMatch.matchedKeywords) &&
+      Array.isArray(responseData.analysis.improvementSuggestions) &&
+      responseData.finalResumeData
+    );
+
+    if (!isValidResponse) {
+      console.error('Invalid response structure:', responseData);
+      throw new Error('Server returned malformed data');
     }
 
-    // Validate response structure
-    if (!data.atsResume || !data.analysis) {
-      throw new Error('Server returned incomplete data');
-    }
-
-    setGeneratedResume(data);
+    // 6. Success case
+    setGeneratedResume(responseData);
     
   } catch (err) {
-    // 4. Better Error Handling
-    const errorMessage = err.message || 'Resume generation failed';
-    setError(errorMessage);
-    
-    // Log more detailed error info in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error("Resume generation error:", {
-        error: err,
-        formData: sanitizeFormData(formData), // Helper to remove sensitive data
-        stack: err.stack
-      });
-    }
+    setError(err.message || 'Resume generation failed');
+    console.error("Submission error:", {
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+      formData: {
+        ...formData,
+        email: '[redacted]',
+        phone: '[redacted]'
+      }
+    });
   } finally {
     setLoading(false);
   }
 };
-
-// Helper function to sanitize form data for logging
-function sanitizeFormData(data) {
-  const copy = {...data};
-  // Remove sensitive fields if needed
-  delete copy.email;
-  delete copy.phone;
-  return copy;
-}
-
 
 const exportResume = (format) => {
     if (!generatedResume) return;
