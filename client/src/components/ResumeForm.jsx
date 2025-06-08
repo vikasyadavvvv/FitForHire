@@ -284,7 +284,7 @@ const exportResume = (format) => {
               <div className="form-group">
                 <label>Year*</label>
                 <input
-                  type="number"
+                  type="text"
                   className='text-black'
                   value={edu.year}
                   onChange={(e) => handleNestedArrayChange('education', index, 'year', e.target.value)}
