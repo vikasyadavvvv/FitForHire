@@ -48,72 +48,110 @@ export default function ResumeForm() {
     setFormData({ ...formData, [field]: newArray });
   };
 
- const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
   setError(null);
 
   try {
-    // Basic validation
-    const missingFields = [];
-    if (!formData.name) missingFields.push('name');
-    if (!formData.email) missingFields.push('email');
-    if (!formData.phone) missingFields.push('phone');
-    if (!formData.skills?.length) missingFields.push('skills');
-    if (!formData.education?.length) missingFields.push('education');
+    // 1. Enhanced Validation
+    const requiredFields = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      skills: formData.skills?.length > 0,
+      education: formData.education?.length > 0
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
 
     if (missingFields.length) {
       throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
     }
 
-    const response = await fetch('http://localhost:5000/api/resume/generate-ats-resume', {
+    // 2. API Request
+    const response = await fetch('https://fitforhire-production.up.railway.app/resume/generate-ats-resume', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({
-        ...formData,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        portfolioUrl: formData.portfolioUrl || '',
+        linkedinUrl: formData.linkedinUrl || '',
+        professionalSummary: formData.professionalSummary || '',
         skills: formData.skills || [],
         education: formData.education || [],
         workExperience: formData.workExperience || [],
         projects: formData.projects || [],
-        certificates: formData.certificates || []
+        certificates: formData.certificates || [],
+        targetJobTitle: formData.targetJobTitle || '',
+        targetJobDescription: formData.targetJobDescription || ''
       })
     });
 
+    // 3. Enhanced Response Handling
     const responseText = await response.text();
     
+    if (!response.ok) {
+      // Try to parse error message if it's JSON
+      try {
+        const errorData = JSON.parse(responseText);
+        throw new Error(errorData.message || `Request failed with status ${response.status}`);
+      } catch {
+        throw new Error(responseText || `Request failed with status ${response.status}`);
+      }
+    }
+
+    // Parse successful response
+    let data;
     try {
-      const data = JSON.parse(responseText);
-      
-      if (!response.ok) {
-        throw new Error(data.message || `Request failed with status ${response.status}`);
-      }
-
-      if (!data.atsResume) {
-        throw new Error('Server returned invalid response format');
-      }
-
-      setGeneratedResume(data);
+      data = JSON.parse(responseText);
     } catch (parseError) {
       console.error('Failed to parse response:', responseText);
-      throw new Error(
-        response.ok 
-          ? 'Server returned invalid JSON: ' + responseText.substring(0, 100)
-          : `Server error: ${response.status} - ${responseText.substring(0, 100)}`
-      );
+      throw new Error('Server returned invalid JSON format');
     }
+
+    // Validate response structure
+    if (!data.atsResume || !data.analysis) {
+      throw new Error('Server returned incomplete data');
+    }
+
+    setGeneratedResume(data);
+    
   } catch (err) {
-    setError(err.message);
-    console.error("Resume generation error:", {
-      error: err,
-      formData: formData
-    });
+    // 4. Better Error Handling
+    const errorMessage = err.message || 'Resume generation failed';
+    setError(errorMessage);
+    
+    // Log more detailed error info in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Resume generation error:", {
+        error: err,
+        formData: sanitizeFormData(formData), // Helper to remove sensitive data
+        stack: err.stack
+      });
+    }
   } finally {
     setLoading(false);
   }
 };
+
+// Helper function to sanitize form data for logging
+function sanitizeFormData(data) {
+  const copy = {...data};
+  // Remove sensitive fields if needed
+  delete copy.email;
+  delete copy.phone;
+  return copy;
+}
+
+
 const exportResume = (format) => {
     if (!generatedResume) return;
     
