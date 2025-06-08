@@ -117,12 +117,15 @@ export default function UploadForm() {
     transition={{ duration: 0.6 }}
     className="text-center max-w-3xl mb-10"
   >
-    <h2 className="text-4xl font-bold mb-4">Wondering if your resume stands out?</h2>
-    <p className="text-gray-300 text-lg mb-3">
-Try our free and fast <span className="text-blue-800 font-semibold">AI-powered</span> resume checker. It analyzes your resume across multiple key areas to ensure it's optimized to catch recruiters’ attention.    </p>
-    <p className="text-gray-400 text-sm">
-      Supports PDF & DOCX files only, max size 4MB. Your data privacy is fully protected.
-    </p>
+<h2 className="text-4xl font-bold text-blue-600 mb-4">
+  Wondering if your resume stands out?
+</h2>
+<p className="text-gray-300 text-lg mb-3">
+  Try our free and fast <span className="text-blue-600 font-semibold">AI-powered</span> resume checker. It analyzes your resume across multiple key areas to ensure it's optimized to catch recruiters’ attention.
+</p>
+<p className="text-gray-400 text-sm">
+  Supports PDF & DOCX files only, max size 4MB. Your data privacy is fully protected.
+</p>
   </motion.div>
 
   {/* Phrase outside card */}

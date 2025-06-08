@@ -12,6 +12,7 @@ import {
 import UploadForm from "./components/UploadForm";
 import ResumeAnalyzer from "./components/ResumeAnalyzer";
 import { useAuth } from '@clerk/clerk-react';
+import ATSResume from "./components/ATSResume";
 // Inside your component:
 
 
@@ -54,6 +55,7 @@ console.log('Auth state:', { isLoaded, userId });
               element={<ResumeAnalyzer resumeText={extractedResumeText} />}
             />
             <Route path="*" element={<Navigate to="/upload" replace />} />
+            <Route path='/create-ats-resume' element={<ATSResume/>}></Route>
             
           </Routes>
         </div>

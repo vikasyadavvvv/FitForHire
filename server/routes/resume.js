@@ -267,6 +267,135 @@ Return ONLY JSON with the exact following structure (no extra text):
 });
 
 
+router.post("/generate-resume",  async (req, res) => {
+  // 1) Validate mandatory fields
+  const {
+    jobPosition,
+    // ↑ Mandatory fields
+    Fullname,
+    email,
+    phone,
+    education,
+    skills,
+    // ↓ Optional fields
+    workExperience = [],
+    projects = [],
+    portfolioUrl = "",
+    linkedinUrl = "",
+    certifications = [],
+    languages = [],
+    achievements = []
+  } = req.body;
 
+  // Basic validation
+  if (!jobPosition || !Fullname || !email || !phone || !education || !skills) {
+    return res.status(400).json({
+      message: "Missing required fields: jobPosition,  Fullname, email, phone, education, and skills are mandatory"
+    });
+  }
+
+  // 2) Prepare the prompt for Gemini
+  const prompt = `
+You are a professional resume builder with expertise in ATS optimization. 
+Create a comprehensive resume based on the following details:
+
+JOB POSITION: ${jobPosition}
+
+CANDIDATE DETAILS:
+ -Fullname:${Fullname}
+- Email: ${email}
+- Phone: ${phone}
+- Education: ${education}
+- Skills: ${Array.isArray(skills) ? skills.join(', ') : skills}
+
+OPTIONAL SECTIONS:
+${workExperience.length > 0 ? `WORK EXPERIENCE:\n${workExperience.map(exp => 
+  `• ${exp.role} at ${exp.company} (${exp.duration}): ${exp.description || ''}`
+).join('\n')}\n` : ''}
+${projects.length > 0 ? `PROJECTS:\n${projects.map(proj => 
+  `• ${proj.title}: ${proj.description || ''} ${proj.technologies ? `(Technologies: ${proj.technologies})` : ''}`
+).join('\n')}\n` : ''}
+${certifications.length > 0 ? `CERTIFICATIONS: ${certifications.join(', ')}\n` : ''}
+${languages.length > 0 ? `LANGUAGES: ${languages.join(', ')}\n` : ''}
+${achievements.length > 0 ? `ACHIEVEMENTS:\n${achievements.join('\n• ')}\n` : ''}
+${portfolioUrl ? `PORTFOLIO: ${portfolioUrl}\n` : ''}
+${linkedinUrl ? `LINKEDIN: ${linkedinUrl}\n` : ''}
+
+INSTRUCTIONS:
+1. Generate a professional summary (3-4 lines) highlighting the candidate's qualifications for ${jobPosition}
+2. Structure the resume in ATS-friendly format with these sections:
+   - Professional Summary
+   - Skills (group related skills together)
+   - Education
+   - ${workExperience.length > 0 ? 'Work Experience' : ''}
+   - ${projects.length > 0 ? 'Projects' : ''}
+   - ${certifications.length > 0 ? 'Certifications' : ''}
+   - ${languages.length > 0 ? 'Languages' : ''}
+   - ${achievements.length > 0 ? 'Achievements' : ''}
+   - Contact Information
+
+3. ATS Optimization:
+   - Include relevant keywords from the job position
+   - Use bullet points for readability
+   - Quantify achievements where possible
+   - Use standard section headings
+   - Avoid graphics/tables
+
+4. For work experience:
+   - Start bullet points with action verbs
+   - Focus on accomplishments rather than duties
+   - Include metrics when possible
+
+Return ONLY JSON with this exact structure:
+{
+  "professionalSummary": string,
+  "resumeSections": [
+    {
+      "sectionName": string,
+      "content": string[] | string  // array for bullet points, string for paragraphs
+    },
+    ...
+  ],
+  "atsOptimizationTips": string[],  // specific tips for this resume
+  "keywords": string[]              // important keywords to include
+}
+`.trim();
+
+  try {
+    // Call Gemini
+    const model = getFitnessModel();
+    const result = await model.generateContent(prompt);
+    const rawText = await result.response.text();
+
+    // Extract JSON response
+    const jsonStart = rawText.indexOf("{");
+    const jsonEnd = rawText.lastIndexOf("}") + 1;
+    if (jsonStart === -1 || jsonEnd === 0) throw new Error("No JSON found in response");
+
+    const generatedResume = JSON.parse(rawText.slice(jsonStart, jsonEnd));
+
+    // Validate structure
+    if (!generatedResume.professionalSummary || 
+        !Array.isArray(generatedResume.resumeSections)) {
+      throw new Error("Invalid resume structure from AI");
+    }
+
+    // Add user's original data for reference
+    generatedResume.meta = {
+      jobPosition,
+      timestamp: new Date().toISOString()
+    };
+
+    res.json(generatedResume);
+
+  } catch (error) {
+    console.error("❌ Resume Generation Error:", error);
+    res.status(500).json({
+      message: "Resume generation failed",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
 
 export default router;
+
