@@ -31,7 +31,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use("/api/resume", resumeRoutes);
 
 app.get('/',(req,res)=>{
-  res.send("Backend is running")
+  res.json({message:"Backend is Running"})
 })
 
 
