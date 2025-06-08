@@ -104,6 +104,7 @@ const ATSResume = () => {
       }
       resumeText += '\n';
     });
+    
 
     // Create download link
     const blob = new Blob([resumeText], { type: 'text/plain' });
@@ -596,24 +597,32 @@ const ATSResume = () => {
 
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">Professional Summary</h3>
+                    <h3 className="text-lg font-medium text-white 0 border-b border-gray-200 pb-2">Professional Summary</h3>
                     <p className="mt-2 text-white whitespace-pre-line">{generatedResume.professionalSummary}</p>
                   </div>
 
-                  {generatedResume.resumeSections.map((section, index) => (
-                    <div key={index}>
-                      <h3 className="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2">{section.sectionName}</h3>
-                      {Array.isArray(section.content) ? (
-                        <ul className="mt-2 pl-5 list-disc">
-                          {section.content.map((item, i) => (
-                            <li key={i} className="text-white mb-1">{item}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-2 text-white whitespace-pre-line">{section.content}</p>
-                      )}
-                    </div>
-                  ))}
+{[...generatedResume.resumeSections]
+  .sort((a, b) => {
+    if (a.sectionName === "Contact Details") return -1;
+    if (b.sectionName === "Contact Details") return 1;
+    return 0;
+  })
+  .map((section, index) => (
+    <div key={index}>
+      <h3 className="text-lg font-medium text-white border-b border-gray-200 pb-2">
+        {section.sectionName}
+      </h3>
+      {Array.isArray(section.content) ? (
+        <ul className="mt-2 pl-5 list-disc">
+          {section.content.map((item, i) => (
+            <li key={i} className="text-white mb-1">{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-white whitespace-pre-line">{section.content}</p>
+      )}
+    </div>
+))}
 
                   {generatedResume.atsOptimizationTips && generatedResume.atsOptimizationTips.length > 0 && (
                     <div className="bg-blue-50 p-4 rounded-md">
