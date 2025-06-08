@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, HashRouter } from "react-router-dom";
+import {  Routes, Route, Navigate, useNavigate, HashRouter } from "react-router-dom";
 import { 
   SignedIn, 
   SignedOut, 
@@ -12,6 +12,7 @@ import {
 import UploadForm from "./components/UploadForm";
 import ResumeAnalyzer from "./components/ResumeAnalyzer";
 import { useAuth } from '@clerk/clerk-react';
+import ResumeForm from "./components/ResumeForm";
 // Inside your component:
 
 
@@ -54,6 +55,8 @@ console.log('Auth state:', { isLoaded, userId });
               element={<ResumeAnalyzer resumeText={extractedResumeText} />}
             />
             <Route path="*" element={<Navigate to="/upload" replace />} />
+            <Route path='/create-ats-resume'  element={<ResumeForm/>}></Route>
+            
           </Routes>
         </div>
       </SignedIn>

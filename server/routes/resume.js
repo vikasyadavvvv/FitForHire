@@ -266,4 +266,111 @@ Return ONLY JSON with the exact following structure (no extra text):
   }
 });
 
+router.post("/generate-ats-resume", requireAuth(), async (req, res) => {
+  const {
+    name,
+    email,
+    phone,
+    portfolioUrl = "",
+    linkedinUrl = "",
+    professionalSummary = "", // Optional field
+    skills = [],
+    certificates = [],
+    education = [],
+    workExperience = [],
+    projects = [],
+    targetJobTitle = "", // New field for summary generation
+    targetJobDescription = "" 
+  } = req.body;
+
+  // 1) Validation - same as before
+  if (!name || !email || !phone || skills.length === 0 || education.length === 0) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  // 2) Prepare resume data
+  const resumeData = {
+    contact: { name, email, phone, portfolioUrl, linkedinUrl },
+    summary: professionalSummary, // May be empty
+    skills,
+    education,
+    experience: workExperience,
+    projects,
+    certificates,
+    targetJobTitle // Added for summary generation
+  };
+
+  // 3) Dynamic Gemini prompt
+  const prompt = `
+You are an ATS resume architect. Perform the following tasks:
+
+${!professionalSummary ? `
+GENERATE PROFESSIONAL SUMMARY:
+- Based on: ${targetJobTitle || "general professional"} role
+- Education: ${education.map(e => `${e.degree} in ${e.field}`).join(", ")}
+- Top Skills: ${skills.slice(0, 5).join(", ")}
+- Experience: ${workExperience.length} ${workExperience.length === 1 ? "position" : "positions"}
+- Format: 3-4 sentences highlighting qualifications
+- Style: Professional third-person or first-person
+` : ''}
+
+RESUME DATA (JSON):
+${JSON.stringify(resumeData, null, 2)}
+
+TARGET JOB CONTEXT:
+${targetJobDescription || "No specific job description provided"}
+
+CRITICAL INSTRUCTIONS:
+1. ${!professionalSummary ? "First generate the professional summary, then" : "Use the existing summary to"} create an ATS-optimized plain text resume
+2. Analyze for:
+   - Keyword optimization
+   - Quantifiable achievements
+   - Section completeness
+3. Return EXACTLY this JSON:
+{
+  "generatedSummary": "${!professionalSummary ? "The generated summary text" : "None"}",
+  "atsResume": "Full plain text resume",
+  "analysis": {
+    "score": 0-100,
+    "keywordGaps": string[],
+    "achievementMetrics": {
+      "count": number,
+      "exampleAchievements": string[]
+    }
+  },
+  "ats": {
+    "score": ${calcATSScore(detectATSIssues(resumeData))},
+    "warnings": ${JSON.stringify(detectATSIssues(resumeData))}
+  }
+}`.trim();
+
+  try {
+    const model = getFitnessModel();
+    const result = await model.generateContent(prompt);
+    const rawText = await result.response.text();
+
+    // JSON extraction and validation (same as before)
+    const jsonStart = rawText.indexOf('{');
+    const jsonEnd = rawText.lastIndexOf('}') + 1;
+    const generated = JSON.parse(rawText.slice(jsonStart, jsonEnd));
+
+    // Merge generated summary back into resume data
+    if (generated.generatedSummary && !professionalSummary) {
+      resumeData.summary = generated.generatedSummary;
+    }
+
+    res.json({
+      ...generated,
+      finalResumeData: resumeData // Return enhanced data structure
+    });
+
+  } catch (error) {
+    console.error("❌ Resume Generation Error:", error);
+    res.status(500).json({
+      message: "Generation failed",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+});
+
 export default router;

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 const fadeInStyle = { animation: "fadeIn 0.6s ease forwards", opacity: 0 };
 import { ClipboardDocumentIcon, AcademicCapIcon, PuzzlePieceIcon, DocumentTextIcon, UserGroupIcon, LightBulbIcon, PresentationChartLineIcon, ChatBubbleLeftRightIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import {
@@ -77,6 +77,7 @@ export default function ResumeAnalyzer() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate=useNavigate()
 
   const handleAnalyze = async () => {
     if (!jobDescription.trim()) {
@@ -171,6 +172,30 @@ export default function ResumeAnalyzer() {
               Your resume matches <strong>{analysis.score}%</strong> of this job description.
             </p>
           </div>
+           {analysis?.ats && (
+  <div className="bg-gray-800 p-6 rounded-lg mt-6 shadow-md">
+    <h3 className="text-xl font-bold mb-3">ATS Simulation Score</h3>
+    <p className="text-gray-300 mb-4">
+      <strong>{analysis.ats.score}%</strong> ATS friendliness
+    </p>
+
+    {analysis.ats.warnings.length > 0 && (
+      <div className="bg-yellow-900 text-yellow-300 p-4 rounded">
+        <h4 className="font-semibold mb-2">Potential Issues:</h4>
+        <ul className="list-disc ml-5">
+          {analysis.ats.warnings.map((w, i) => <li key={i}>{w}</li>)}
+        </ul>
+               <button
+                onClick={() => navigate("/create-ats-resume")}
+                className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-300"
+              >
+                Improve with ATS Resume Builder
+              </button>
+      </div>
+
+    )}
+  </div>
+)}
 
           {/* Top 3 Improvements */}
           <div className="bg-gray-800 rounded-lg p-6 shadow-md">
@@ -348,23 +373,7 @@ export default function ResumeAnalyzer() {
           ))}
         </div>
       )}
-      {analysis?.ats && (
-  <div className="bg-gray-800 p-6 rounded-lg mt-6 shadow-md">
-    <h3 className="text-xl font-bold mb-3">ATS Simulation Score</h3>
-    <p className="text-gray-300 mb-4">
-      <strong>{analysis.ats.score}%</strong> ATS friendliness
-    </p>
-
-    {analysis.ats.warnings.length > 0 && (
-      <div className="bg-yellow-900 text-yellow-300 p-4 rounded">
-        <h4 className="font-semibold mb-2">Potential Issues:</h4>
-        <ul className="list-disc ml-5">
-          {analysis.ats.warnings.map((w, i) => <li key={i}>{w}</li>)}
-        </ul>
-      </div>
-    )}
-  </div>
-)}
+     
 
 
       <style>{`
