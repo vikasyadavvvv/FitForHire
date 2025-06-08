@@ -30,6 +30,11 @@ mongoose.connect(process.env.MONGO_URI)
 // Routes
 app.use("/api/resume", resumeRoutes);
 
+app.get('/',(req,res)=>{
+  console.log("Backend is running")
+})
+
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
