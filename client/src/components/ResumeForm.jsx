@@ -53,73 +53,67 @@ export default function ResumeForm() {
   setLoading(true);
   setError(null);
 
-  // Basic validation mirroring backend requirements
-  if (!formData.name || !formData.email || !formData.phone || 
-      !formData.skills || formData.skills.length === 0 ||
-      !formData.education || formData.education.length === 0) {
-    setError('Missing required fields: Name, Email, Phone, Skills, and Education are mandatory');
-    setLoading(false);
-    return;
-  }
-
   try {
-    const response = await fetch('https://fitforhire-production.up.railway.app/api/resume/generate-ats-resume', {
+    // Basic validation
+    const missingFields = [];
+    if (!formData.name) missingFields.push('name');
+    if (!formData.email) missingFields.push('email');
+    if (!formData.phone) missingFields.push('phone');
+    if (!formData.skills?.length) missingFields.push('skills');
+    if (!formData.education?.length) missingFields.push('education');
+
+    if (missingFields.length) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    const response = await fetch('http://localhost:5000/api/resume/generate-ats-resume', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({
         ...formData,
-        // Ensure arrays are properly sent even if empty
-        certificates: formData.certificates || [],
-        projects: formData.projects || [],
+        skills: formData.skills || [],
+        education: formData.education || [],
         workExperience: formData.workExperience || [],
-        // Optional fields with defaults
-        portfolioUrl: formData.portfolioUrl || "",
-        linkedinUrl: formData.linkedinUrl || "",
-        professionalSummary: formData.professionalSummary || "",
-        targetJobTitle: formData.targetJobTitle || "",
-        targetJobDescription: formData.targetJobDescription || ""
+        projects: formData.projects || [],
+        certificates: formData.certificates || []
       })
     });
 
-    // Handle non-200 responses
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    const responseText = await response.text();
+    
+    try {
+      const data = JSON.parse(responseText);
+      
+      if (!response.ok) {
+        throw new Error(data.message || `Request failed with status ${response.status}`);
+      }
+
+      if (!data.atsResume) {
+        throw new Error('Server returned invalid response format');
+      }
+
+      setGeneratedResume(data);
+    } catch (parseError) {
+      console.error('Failed to parse response:', responseText);
       throw new Error(
-        errorData.message || 
-        `Request failed with status ${response.status}`
+        response.ok 
+          ? 'Server returned invalid JSON: ' + responseText.substring(0, 100)
+          : `Server error: ${response.status} - ${responseText.substring(0, 100)}`
       );
     }
-
-    const data = await response.json();
-    
-    // Validate response structure
-    if (!data.atsResume || !data.analysis) {
-      throw new Error('Invalid response format from server');
-    }
-
-    setGeneratedResume(data);
   } catch (err) {
-    // Handle different error types
-    let errorMessage = err.message;
-    
-    if (err.message.includes('Failed to fetch')) {
-      errorMessage = 'Network error - could not connect to server';
-    } else if (err.message.includes('<!DOCTYPE html>')) {
-      errorMessage = 'Server error occurred';
-    } else if (err.name === 'SyntaxError') {
-      errorMessage = 'Invalid server response format';
-    }
-    
-    setError(errorMessage);
-    console.error("Resume generation failed:", err);
+    setError(err.message);
+    console.error("Resume generation error:", {
+      error: err,
+      formData: formData
+    });
   } finally {
     setLoading(false);
   }
 };
-
 const exportResume = (format) => {
     if (!generatedResume) return;
     

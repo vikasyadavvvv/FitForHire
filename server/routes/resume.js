@@ -267,110 +267,111 @@ Return ONLY JSON with the exact following structure (no extra text):
 });
 
 router.post("/generate-ats-resume", requireAuth(), async (req, res) => {
-  const {
-    name,
-    email,
-    phone,
-    portfolioUrl = "",
-    linkedinUrl = "",
-    professionalSummary = "", // Optional field
-    skills = [],
-    certificates = [],
-    education = [],
-    workExperience = [],
-    projects = [],
-    targetJobTitle = "", // New field for summary generation
-    targetJobDescription = "" 
-  } = req.body;
-
-  // 1) Validation - same as before
-  if (!name || !email || !phone || skills.length === 0 || education.length === 0) {
-    return res.status(400).json({ message: "Missing required fields" });
-  }
-
-  // 2) Prepare resume data
-  const resumeData = {
-    contact: { name, email, phone, portfolioUrl, linkedinUrl },
-    summary: professionalSummary, // May be empty
-    skills,
-    education,
-    experience: workExperience,
-    projects,
-    certificates,
-    targetJobTitle // Added for summary generation
-  };
-
-  // 3) Dynamic Gemini prompt
-  const prompt = `
-You are an ATS resume architect. Perform the following tasks:
-
-${!professionalSummary ? `
-GENERATE PROFESSIONAL SUMMARY:
-- Based on: ${targetJobTitle || "general professional"} role
-- Education: ${education.map(e => `${e.degree} in ${e.field}`).join(", ")}
-- Top Skills: ${skills.slice(0, 5).join(", ")}
-- Experience: ${workExperience.length} ${workExperience.length === 1 ? "position" : "positions"}
-- Format: 3-4 sentences highlighting qualifications
-- Style: Professional third-person or first-person
-` : ''}
-
-RESUME DATA (JSON):
-${JSON.stringify(resumeData, null, 2)}
-
-TARGET JOB CONTEXT:
-${targetJobDescription || "No specific job description provided"}
-
-CRITICAL INSTRUCTIONS:
-1. ${!professionalSummary ? "First generate the professional summary, then" : "Use the existing summary to"} create an ATS-optimized plain text resume
-2. Analyze for:
-   - Keyword optimization
-   - Quantifiable achievements
-   - Section completeness
-3. Return EXACTLY this JSON:
-{
-  "generatedSummary": "${!professionalSummary ? "The generated summary text" : "None"}",
-  "atsResume": "Full plain text resume",
-  "analysis": {
-    "score": 0-100,
-    "keywordGaps": string[],
-    "achievementMetrics": {
-      "count": number,
-      "exampleAchievements": string[]
-    }
-  },
-  "ats": {
-    "score": ${calcATSScore(detectATSIssues(resumeData))},
-    "warnings": ${JSON.stringify(detectATSIssues(resumeData))}
-  }
-}`.trim();
-
+  console.log('Request received at /generate-ats-resume'); // Debug log
+  
   try {
+    // Validate content type
+    if (!req.is('application/json')) {
+      return res.status(415).json({ message: "Content-Type must be application/json" });
+    }
+
+    const {
+      name,
+      email,
+      phone,
+      portfolioUrl = "",
+      linkedinUrl = "",
+      professionalSummary = "",
+      skills = [],
+      certificates = [],
+      education = [],
+      workExperience = [],
+      projects = [],
+      targetJobTitle = "",
+      targetJobDescription = ""
+    } = req.body;
+
+    console.log('Received data:', { 
+      name, email, 
+      skills: skills.length, 
+      education: education.length 
+    }); // Debug log
+
+    // Validation
+    const missingFields = [];
+    if (!name) missingFields.push('name');
+    if (!email) missingFields.push('email');
+    if (!phone) missingFields.push('phone');
+    if (skills.length === 0) missingFields.push('skills');
+    if (education.length === 0) missingFields.push('education');
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: "Missing required fields",
+        missingFields 
+      });
+    }
+
+    // Prepare resume data
+    const resumeData = {
+      contact: { name, email, phone, portfolioUrl, linkedinUrl },
+      summary: professionalSummary,
+      skills,
+      education,
+      experience: workExperience,
+      projects,
+      certificates,
+      targetJobTitle
+    };
+
+    console.log('Generated resumeData:', resumeData); // Debug log
+
+    // Dynamic Gemini prompt
+    const prompt = `...`; // Your existing prompt
+
     const model = getFitnessModel();
     const result = await model.generateContent(prompt);
     const rawText = await result.response.text();
 
-    // JSON extraction and validation (same as before)
-    const jsonStart = rawText.indexOf('{');
-    const jsonEnd = rawText.lastIndexOf('}') + 1;
-    const generated = JSON.parse(rawText.slice(jsonStart, jsonEnd));
+    console.log('Raw Gemini response:', rawText); // Debug log
 
-    // Merge generated summary back into resume data
+    // More robust JSON extraction
+    let generated;
+    try {
+      const jsonStart = Math.max(rawText.indexOf('{'), 0);
+      const jsonEnd = Math.min(rawText.lastIndexOf('}') + 1, rawText.length);
+      const jsonString = rawText.slice(jsonStart, jsonEnd);
+      generated = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('Failed to parse Gemini response:', parseError);
+      throw new Error('Failed to parse AI response');
+    }
+
+    // Validate Gemini response structure
+    if (!generated.atsResume || !generated.analysis) {
+      throw new Error('Invalid response structure from AI');
+    }
+
+    // Merge generated summary
     if (generated.generatedSummary && !professionalSummary) {
       resumeData.summary = generated.generatedSummary;
     }
 
+    // Successful response
     res.json({
+      success: true,
       ...generated,
-      finalResumeData: resumeData // Return enhanced data structure
+      finalResumeData: resumeData
     });
 
   } catch (error) {
     console.error("❌ Resume Generation Error:", error);
     res.status(500).json({
-      message: "Generation failed",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined
+      success: false,
+      message: "Resume generation failed",
+      error: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined
     });
   }
 });
-
 export default router;

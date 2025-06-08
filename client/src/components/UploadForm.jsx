@@ -119,7 +119,7 @@ export default function UploadForm() {
   >
     <h2 className="text-4xl font-bold mb-4">Wondering if your resume stands out?</h2>
     <p className="text-gray-300 text-lg mb-3">
-Try our free and fast <span className="text-blue-400 font-semibold">AI-powered</span> resume checker. It analyzes your resume across multiple key areas to ensure it's optimized to catch recruiters’ attention.    </p>
+Try our free and fast <span className="text-blue-800 font-semibold">AI-powered</span> resume checker. It analyzes your resume across multiple key areas to ensure it's optimized to catch recruiters’ attention.    </p>
     <p className="text-gray-400 text-sm">
       Supports PDF & DOCX files only, max size 4MB. Your data privacy is fully protected.
     </p>

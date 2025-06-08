@@ -120,7 +120,7 @@ export default function ResumeAnalyzer() {
 
   return (
     <div className="bg-gray-900/90 backdrop-blur-md border border-gray-700 rounded-xl p-8 mt-6 max-w-5xl mx-auto shadow-lg text-gray-100">
-      <h2 className="text-3xl font-bold mb-8 tracking-tight text-center">
+      <h2 className="text-3xl font-bold mb-8 tracking-tight text-center text-white">
         FitForHire<span className="text-blue-500 text-1xl">✓</span>
       </h2>
 
