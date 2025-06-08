@@ -84,7 +84,7 @@ const handleSubmit = async (e) => {
     }
 
     // 3. Make API request
-    const response = await fetch('http://localhost:5000/api/resume/generate-ats-resume', {
+    const response = await fetch('https://fitforhire-production.up.railway.app/api/resume/generate-ats-resume', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
