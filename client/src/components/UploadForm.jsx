@@ -12,6 +12,7 @@ import {
   IdentificationIcon,
   ChatBubbleLeftRightIcon,
   UsersIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 const features = [
@@ -59,7 +60,18 @@ const features = [
     icon: UsersIcon,
     title: "Candidate comparison overview",
     description: "Benchmarks you against other top candidates."
-  }
+  },
+  {
+  icon: ChartBarIcon,
+  title: "Live ATS Score",
+  description: "Instantly calculates how well your resume matches the job description using AI-powered analysis."
+},
+{
+  icon: DocumentTextIcon,
+  title: "Build ATS Resume",
+  description: "Creates a professional, ATS-optimized resume tailored to the job description through AI insights."
+}
+
 ];
 
 
