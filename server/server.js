@@ -40,6 +40,9 @@ app.use((err, req, res, next) => {
   res.status(500).send('Something broke!');
 });
 
+// Server-side route
+
+
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
 });

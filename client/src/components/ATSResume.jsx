@@ -1,78 +1,103 @@
 import React, { useState } from 'react';
-import { FaUser, FaGraduationCap, FaTools, FaBriefcase, FaProjectDiagram, 
-         FaCertificate, FaLanguage, FaTrophy, FaLink, FaLinkedin, 
-         FaDownload, FaPlus, FaTrash, FaSpinner } from 'react-icons/fa';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const ATSResume = () => {
   const [formData, setFormData] = useState({
     jobPosition: '',
-    Fullname:"",
+    Fullname: '',
     email: '',
     phone: '',
     education: '',
     skills: '',
-    workExperience: [],
-    projects: [],
-    certifications: [],
-    languages: [],
-    achievements: [],
+    workExperience: [{ role: '', company: '', duration: '', description: '' }],
+    projects: [{ title: '', description: '', technologies: '' }],
     portfolioUrl: '',
-    linkedinUrl: ''
+    linkedinUrl: '',
+    certifications: [''],
+    languages: [''],
+    achievements: ['']
   });
 
   const [generatedResume, setGeneratedResume] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleInputChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleArrayInputChange = (section, index, field, value) => {
-    setFormData(prev => {
-      const newArray = [...prev[section]];
-      newArray[index][field] = value;
-      return { ...prev, [section]: newArray };
-    });
+  const handleArrayChange = (field, index, value) => {
+    const newArray = [...formData[field]];
+    newArray[index] = value;
+    setFormData(prev => ({ ...prev, [field]: newArray }));
   };
 
-  const addNewItem = (section, template) => {
+  const addArrayItem = (field) => {
+    setFormData(prev => ({ ...prev, [field]: [...prev[field], ''] }));
+  };
+
+  const removeArrayItem = (field, index) => {
+    const newArray = formData[field].filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, [field]: newArray }));
+  };
+
+  const handleExperienceChange = (index, field, value) => {
+    const newExperience = [...formData.workExperience];
+    newExperience[index][field] = value;
+    setFormData(prev => ({ ...prev, workExperience: newExperience }));
+  };
+
+  const addExperience = () => {
     setFormData(prev => ({
       ...prev,
-      [section]: [...prev[section], template]
+      workExperience: [...prev.workExperience, { role: '', company: '', duration: '', description: '' }]
     }));
   };
 
-  const removeItem = (section, index) => {
+  const removeExperience = (index) => {
+    const newExperience = formData.workExperience.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, workExperience: newExperience }));
+  };
+
+  const handleProjectChange = (index, field, value) => {
+    const newProjects = [...formData.projects];
+    newProjects[index][field] = value;
+    setFormData(prev => ({ ...prev, projects: newProjects }));
+  };
+
+  const addProject = () => {
     setFormData(prev => ({
       ...prev,
-      [section]: prev[section].filter((_, i) => i !== index)
+      projects: [...prev.projects, { title: '', description: '', technologies: '' }]
     }));
   };
 
-  const generateResume = async (e) => {
-    e.preventDefault();
+  const removeProject = (index) => {
+    const newProjects = formData.projects.filter((_, i) => i !== index);
+    setFormData(prev => ({ ...prev, projects: newProjects }));
+  };
+
+  const generateResume = async () => {
+    if (!formData.jobPosition || !formData.Fullname || !formData.email || !formData.phone || !formData.education || !formData.skills) {
+      setError('Missing required fields: jobPosition, Fullname, email, phone, education, and skills are mandatory');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      // Prepare the data for API
-      const requestData = {
-        ...formData,
-        skills: formData.skills.split('\n').filter(skill => skill.trim() !== ''),
-        certifications: formData.certifications.map(c => c.name),
-        languages: formData.languages.map(l => l.name),
-        achievements: formData.achievements.map(a => a.description)
-      };
-
-      // Call your backend API
       const response = await fetch('https://fitforhire-production.up.railway.app/api/resume/generate-resume', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify({
+          ...formData,
+          skills: formData.skills.split(',').map(skill => skill.trim()),
+        }),
       });
 
       if (!response.ok) {
@@ -88,576 +113,508 @@ const ATSResume = () => {
     }
   };
 
-  const downloadResume = () => {
-    if (!generatedResume) return;
-    
-    // Create a formatted text version of the resume
-    let resumeText = `RESUME - ${formData.jobPosition}\n\n`;
-    resumeText += `Professional Summary:\n${generatedResume.professionalSummary}\n\n`;
+ const downloadPDF = async () => {
+  try {
+    setLoading(true);
+    setError('');
 
-    generatedResume.resumeSections.forEach(section => {
-      resumeText += `${section.sectionName}:\n`;
-      if (Array.isArray(section.content)) {
-        section.content.forEach(item => resumeText += `• ${item}\n`);
-      } else {
-        resumeText += `${section.content}\n`;
+    // Create a print-specific stylesheet
+    const printCSS = `
+      @media print {
+        * {
+          color: #000 !important;
+          background: #fff !important;
+        }
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.5;
+        }
+        a { text-decoration: none; }
       }
-      resumeText += '\n';
-    });
-    
+    `;
 
-    // Create download link
-    const blob = new Blob([resumeText], { type: 'text/plain' });
+    // Create a clone with print styles
+    const resumeElement = document.getElementById('resume-preview');
+    const clone = resumeElement.cloneNode(true);
+    
+    // Add print styles
+    const style = document.createElement('style');
+    style.textContent = printCSS;
+    clone.prepend(style);
+    
+    // Open print dialog
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(clone.outerHTML);
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Wait for content to load
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Trigger print (which includes PDF save option)
+    printWindow.print();
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    setError('Failed to generate PDF. Please use your browser\'s print function instead.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const downloadText = () => {
+    const resumeElement = document.getElementById('resume-preview');
+    const text = resumeElement.innerText;
+    const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ATS_Resume_${formData.jobPosition.replace(/\s+/g, '_')}.txt`;
-    document.body.appendChild(a);
+    a.download = `${formData.Fullname.replace(/\s+/g, '_')}_Resume.txt`;
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="min-h-screen bg-black py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-extrabold text-blue-500 sm:text-4xl">
-            ATS-Friendly Resume Generator
-          </h1>
-          <p className="mt-3 text-xl text-white">
-            Create a resume optimized for Applicant Tracking Systems
-          </p>
-        </div>
-
+    <div className="min-h-screen bg-black py-8 px-4">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl font-bold text-center text-blue-700 mb-8">ATS-Optimized Resume Generator</h1>
+        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Section */}
-          <div className="space-y-6">
-            <form onSubmit={generateResume} className="space-y-6">
-              {/* Basic Information */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center mb-4">
-                  <FaUser className="text-blue-500 mr-2" />
-                  <h2 className="text-lg font-medium text-white">Basic Information</h2>
-                </div>
-                <div className="space-y-4">
+          <div className="bg-gray-500 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Personal Information</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Job Position You're Applying For*</label>
+                <input
+                  type="text"
+                  name="jobPosition"
+                  value={formData.jobPosition}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Software Engineer"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name*</label>
+                <input
+                  type="text"
+                  name="Fullname"
+                  value={formData.Fullname}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="john@example.com"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone*</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="+1 (123) 456-7890"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Education*</label>
+                <textarea
+                  name="education"
+                  value={formData.education}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. BSc Computer Science, University of XYZ, 2020"
+                  rows="2"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Skills (comma separated)*</label>
+                <textarea
+                  name="skills"
+                  value={formData.skills}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. JavaScript, React, Node.js, Python"
+                  rows="3"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Portfolio URL</label>
+                <input
+                  type="url"
+                  name="portfolioUrl"
+                  value={formData.portfolioUrl}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://yourportfolio.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
+                <input
+                  type="url"
+                  name="linkedinUrl"
+                  value={formData.linkedinUrl}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://linkedin.com/in/yourprofile"
+                />
+              </div>
+            </div>
+            
+            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-800">Work Experience</h2>
+            {formData.workExperience.map((exp, index) => (
+              <div key={index} className="mb-4 p-4 border border-gray-200 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                   <div>
-                    <label htmlFor="jobPosition" className="block text-sm font-medium text-white">
-                      Target Job Position *
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Role</label>
                     <input
                       type="text"
-                      id="jobPosition"
-                      name="jobPosition"
-                      value={formData.jobPosition}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      value={exp.role}
+                      onChange={(e) => handleExperienceChange(index, 'role', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. Frontend Developer"
                     />
                   </div>
-                                    <div>
-                    <label htmlFor="jobPosition" className="block text-sm font-medium text-white">
-                        Name *
-                    </label>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
                     <input
                       type="text"
-                      id="Fullname"
-                      name="Fullname"
-                      value={formData.Fullname}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-white">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-white">
-                      Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      value={exp.company}
+                      onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. Tech Corp Inc."
                     />
                   </div>
                 </div>
-              </div>
-
-              {/* Education */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center mb-4">
-                  <FaGraduationCap className="text-blue-500 mr-2" />
-                  <h2 className="text-lg font-medium text-white">Education *</h2>
-                </div>
-                <div>
-                  <label htmlFor="education" className="block text-sm font-medium text-white">
-                    Education Details
-                  </label>
-                  <textarea
-                    id="education"
-                    name="education"
-                    rows={3}
-                    value={formData.education}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                  <input
+                    type="text"
+                    value={exp.duration}
+                    onChange={(e) => handleExperienceChange(index, 'duration', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. Jan 2020 - Present"
                   />
-                  <p className="mt-2 text-sm text-white">
-                    Example: B.S. in Computer Science, University of Example, 2020
-                  </p>
                 </div>
-              </div>
-
-              {/* Skills */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center mb-4">
-                  <FaTools className="text-blue-500 mr-2" />
-                  <h2 className="text-lg font-medium text-white">Skills *</h2>
-                </div>
-                <div>
-                  <label htmlFor="skills" className="block text-sm font-medium text-white">
-                    Add your skills (comma separated or one per line)
-                  </label>
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea
-                    id="skills"
-                    name="skills"
-                    rows={3}
-                    value={formData.skills}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    value={exp.description}
+                    onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                    placeholder="Describe your responsibilities and achievements"
                   />
-                  <p className="mt-2 text-sm text-gray-500">
-                    Example: JavaScript, React, Node.js, Python, Project Management
-                  </p>
                 </div>
-              </div>
-
-              {/* Work Experience */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <FaBriefcase className="text-blue-500 mr-2" />
-                    <h2 className="text-lg font-medium text-blue-500">Work Experience</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addNewItem('workExperience', { role: '', company: '', duration: '', description: '' })}
-                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FaPlus className="mr-1" /> Add Experience
-                  </button>
-                </div>
-                {formData.workExperience.length === 0 ? (
-                  <p className="text-sm text-gray-500">No work experience added</p>
-                ) : (
-                  <div className="space-y-4">
-                    {formData.workExperience.map((exp, index) => (
-                      <div key={index} className="border border-gray-200 rounded-md p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium text-white">Experience #{index + 1}</h3>
-                          <button
-                            type="button"
-                            onClick={() => removeItem('workExperience', index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                          <div>
-                            <label className="block text-sm font-medium text-white">Job Title</label>
-                            <input
-                              type="text"
-                              value={exp.role}
-                              onChange={(e) => handleArrayInputChange('workExperience', index, 'role', e.target.value)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-white">Company</label>
-                            <input
-                              type="text"
-                              value={exp.company}
-                              onChange={(e) => handleArrayInputChange('workExperience', index, 'company', e.target.value)}
-                              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                            />
-                          </div>
-                        </div>
-                        <div className="mb-3">
-                          <label className="block text-sm font-medium text-white">Duration (e.g., Jan 2020 - Present)</label>
-                          <input
-                            type="text"
-                            value={exp.duration}
-                            onChange={(e) => handleArrayInputChange('workExperience', index, 'duration', e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-white">Description</label>
-                          <textarea
-                            rows={3}
-                            value={exp.description}
-                            onChange={(e) => handleArrayInputChange('workExperience', index, 'description', e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Projects */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <FaProjectDiagram className="text-blue-500 mr-2" />
-                    <h2 className="text-lg font-medium text-blue-500">Projects</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addNewItem('projects', { title: '', description: '', technologies: '' })}
-                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FaPlus className="mr-1" /> Add Project
-                  </button>
-                </div>
-                {formData.projects.length === 0 ? (
-                  <p className="text-sm text-gray-500">No projects added</p>
-                ) : (
-                  <div className="space-y-4">
-                    {formData.projects.map((project, index) => (
-                      <div key={index} className="border border-gray-200 rounded-md p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-medium text-white">Project #{index + 1}</h3>
-                          <button
-                            type="button"
-                            onClick={() => removeItem('projects', index)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                        <div className="mb-3">
-                          <label className="block text-sm font-medium text-white">Project Title</label>
-                          <input
-                            type="text"
-                            value={project.title}
-                            onChange={(e) => handleArrayInputChange('projects', index, 'title', e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        <div className="mb-3">
-                          <label className="block text-sm font-medium text-white">Description</label>
-                          <textarea
-                            rows={3}
-                            value={project.description}
-                            onChange={(e) => handleArrayInputChange('projects', index, 'description', e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-white">Technologies Used</label>
-                          <input
-                            type="text"
-                            value={project.technologies}
-                            onChange={(e) => handleArrayInputChange('projects', index, 'technologies', e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Certifications */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <FaCertificate className="text-blue-500 mr-2" />
-                    <h2 className="text-lg font-medium text-blue-500">Certifications</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addNewItem('certifications', { name: '' })}
-                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FaPlus className="mr-1" /> Add Certification
-                  </button>
-                </div>
-                {formData.certifications.length === 0 ? (
-                  <p className="text-sm text-gray-500">No certifications added</p>
-                ) : (
-                  <div className="space-y-3">
-                    {formData.certifications.map((cert, index) => (
-                      <div key={index} className="flex items-center">
-                        <input
-                          type="text"
-                          value={cert.name}
-                          onChange={(e) => handleArrayInputChange('certifications', index, 'name', e.target.value)}
-                          className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeItem('certifications', index)}
-                          className="ml-2 text-red-500 hover:text-red-700"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Languages */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <FaLanguage className="text-blue-500 mr-2" />
-                    <h2 className="text-lg font-medium text-blue-500">Languages</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addNewItem('languages', { name: '' })}
-                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FaPlus className="mr-1" /> Add Language
-                  </button>
-                </div>
-                {formData.languages.length === 0 ? (
-                  <p className="text-sm text-gray-500">No languages added</p>
-                ) : (
-                  <div className="space-y-3">
-                    {formData.languages.map((lang, index) => (
-                      <div key={index} className="flex items-center">
-                        <input
-                          type="text"
-                          value={lang.name}
-                          onChange={(e) => handleArrayInputChange('languages', index, 'name', e.target.value)}
-                          className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeItem('languages', index)}
-                          className="ml-2 text-red-500 hover:text-red-700"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Achievements */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <FaTrophy className="text-blue-500 mr-2" />
-                    <h2 className="text-lg font-medium text-blue-500">Achievements</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addNewItem('achievements', { description: '' })}
-                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    <FaPlus className="mr-1" /> Add Achievement
-                  </button>
-                </div>
-                {formData.achievements.length === 0 ? (
-                  <p className="text-sm text-gray-500">No achievements added</p>
-                ) : (
-                  <div className="space-y-3">
-                    {formData.achievements.map((achievement, index) => (
-                      <div key={index} className="flex items-start">
-                        <textarea
-                          rows={2}
-                          value={achievement.description}
-                          onChange={(e) => handleArrayInputChange('achievements', index, 'description', e.target.value)}
-                          className="flex-1 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeItem('achievements', index)}
-                          className="ml-2 text-red-500 hover:text-red-700 mt-2"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Links */}
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex items-center mb-4">
-                  <FaLink className="text-blue-500 mr-2" />
-                  <h2 className="text-lg font-medium text-blue-500">Links</h2>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="portfolioUrl" className="block text-sm font-medium text-white">
-                      Portfolio URL
-                    </label>
-                    <input
-                      type="url"
-                      id="portfolioUrl"
-                      name="portfolioUrl"
-                      value={formData.portfolioUrl}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="linkedinUrl" className="block text-sm font-medium text-white">
-                      LinkedIn URL
-                    </label>
-                    <input
-                      type="url"
-                      id="linkedinUrl"
-                      name="linkedinUrl"
-                      value={formData.linkedinUrl}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <div className="flex justify-center">
+                
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  type="button"
+                  onClick={() => removeExperience(index)}
+                  className="text-red-600 text-sm font-medium hover:text-red-800"
                 >
-                  {loading ? (
-                    <>
-                      <FaSpinner className="animate-spin mr-2" />
-                      Generating Resume...
-                    </>
-                  ) : (
-                    'Generate ATS-Optimized Resume'
-                  )}
+                  Remove Experience
                 </button>
               </div>
-            </form>
+            ))}
+            
+            <button
+              type="button"
+              onClick={addExperience}
+              className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              + Add Work Experience
+            </button>
+            
+            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-800">Projects</h2>
+            {formData.projects.map((proj, index) => (
+              <div key={index} className="mb-4 p-4 border border-gray-200 rounded-lg">
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Title</label>
+                  <input
+                    type="text"
+                    value={proj.title}
+                    onChange={(e) => handleProjectChange(index, 'title', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. E-commerce Website"
+                  />
+                </div>
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={proj.description}
+                    onChange={(e) => handleProjectChange(index, 'description', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                    placeholder="Describe the project and your role"
+                  />
+                </div>
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Technologies Used</label>
+                  <input
+                    type="text"
+                    value={proj.technologies}
+                    onChange={(e) => handleProjectChange(index, 'technologies', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. React, Node.js, MongoDB"
+                  />
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => removeProject(index)}
+                  className="text-red-600 text-sm font-medium hover:text-red-800"
+                >
+                  Remove Project
+                </button>
+              </div>
+            ))}
+            
+            <button
+              type="button"
+              onClick={addProject}
+              className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              + Add Project
+            </button>
+            
+            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-800">Additional Information</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
+                {formData.certifications.map((cert, index) => (
+                  <div key={index} className="flex mb-2">
+                    <input
+                      type="text"
+                      value={cert}
+                      onChange={(e) => handleArrayChange('certifications', index, e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. AWS Certified Developer"
+                    />
+                    {formData.certifications.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeArrayItem('certifications', index)}
+                        className="ml-2 px-3 text-red-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addArrayItem('certifications')}
+                  className="mt-1 px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm"
+                >
+                  + Add Certification
+                </button>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
+                {formData.languages.map((lang, index) => (
+                  <div key={index} className="flex mb-2">
+                    <input
+                      type="text"
+                      value={lang}
+                      onChange={(e) => handleArrayChange('languages', index, e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. English (Fluent)"
+                    />
+                    {formData.languages.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeArrayItem('languages', index)}
+                        className="ml-2 px-3 text-red-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addArrayItem('languages')}
+                  className="mt-1 px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm"
+                >
+                  + Add Language
+                </button>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Achievements</label>
+                {formData.achievements.map((ach, index) => (
+                  <div key={index} className="flex mb-2">
+                    <textarea
+                      value={ach}
+                      onChange={(e) => handleArrayChange('achievements', index, e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. Employee of the Month, June 2022"
+                      rows="2"
+                    />
+                    {formData.achievements.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeArrayItem('achievements', index)}
+                        className="ml-2 px-3 text-red-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addArrayItem('achievements')}
+                  className="mt-1 px-3 py-1 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm"
+                >
+                  + Add Achievement
+                </button>
+              </div>
+            </div>
+            
+            <div className="mt-8">
+              <button
+                onClick={generateResume}
+                disabled={loading}
+                className={`w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {loading ? 'Generating Resume...' : 'Generate ATS-Optimized Resume'}
+              </button>
+              
+              {error && (
+                <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-md">
+                  {error}
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* Preview Section */}
-          <div className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-red-700">{error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
+          
+          {/* Resume Preview Section */}
+          <div className="bg-gray-500 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Resume Preview</h2>
+            
             {generatedResume ? (
-              <div className="bg-black shadow rounded-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-bold text-gray-300">Generated Resume</h2>
-                  <button
-                    onClick={downloadResume}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    <FaDownload className="mr-2" /> Download Resume
-                  </button>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium text-white 0 border-b border-gray-200 pb-2">Professional Summary</h3>
-                    <p className="mt-2 text-white whitespace-pre-line">{generatedResume.professionalSummary}</p>
-                  </div>
-
-{[...generatedResume.resumeSections]
-  .sort((a, b) => {
-    if (a.sectionName === "Contact Details") return -1;
-    if (b.sectionName === "Contact Details") return 1;
-    return 0;
-  })
-  .map((section, index) => (
-    <div key={index}>
-      <h3 className="text-lg font-medium text-white border-b border-gray-200 pb-2">
-        {section.sectionName}
-      </h3>
-      {Array.isArray(section.content) ? (
-        <ul className="mt-2 pl-5 list-disc">
-          {section.content.map((item, i) => (
-            <li key={i} className="text-white mb-1">{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-2 text-white whitespace-pre-line">{section.content}</p>
-      )}
-    </div>
-))}
-
-                  {generatedResume.atsOptimizationTips && generatedResume.atsOptimizationTips.length > 0 && (
-                    <div className="bg-blue-50 p-4 rounded-md">
-                      <h3 className="text-lg font-medium text-blue-800 mb-2">ATS Optimization Tips</h3>
-                      <ul className="list-disc pl-5 space-y-1">
-                        {generatedResume.atsOptimizationTips.map((tip, index) => (
-                          <li key={index} className="text-blue-700">{tip}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {generatedResume.keywords && generatedResume.keywords.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Important Keywords</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {generatedResume.keywords.map((keyword, index) => (
-                          <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                            {keyword}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <div>
+        <div className="flex space-x-4 mb-4">
+          <button
+            onClick={downloadPDF}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          >
+            Download PDF 
+          </button>
+          <button
+            onClick={downloadText}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Download Text
+          </button>
+        </div>
+        
+        <div id="resume-preview" className="p-6 border border-gray-200 rounded-md">
+          {/* Contact Info - Always shown */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">{formData.Fullname}</h1>
+            <div className="flex flex-wrap gap-x-4 text-sm text-gray-600 mt-1">
+              <span>{formData.email}</span>
+              <span>{formData.phone}</span>
+              {formData.linkedinUrl && <span>{formData.linkedinUrl}</span>}
+              {formData.portfolioUrl && <span>{formData.portfolioUrl}</span>}
+            </div>
+          </div>
+          
+          {/* Professional Summary - Always shown */}
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">Professional Summary</h2>
+            <p className="text-black">{generatedResume.professionalSummary}</p>
+          </div>
+          
+          {/* Dynamic Sections - Only show if they have content */}
+          {generatedResume.resumeSections
+            .filter(section => {
+              // Filter out empty sections
+              if (Array.isArray(section.content)) {
+                return section.content.length > 0;
+              }
+              return section.content && section.content.trim() !== '';
+            })
+            .map((section, index) => (
+              <div key={index} className="mb-6">
+                <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">{section.sectionName}</h2>
+                {Array.isArray(section.content) ? (
+                  <ul className="list-disc pl-5 space-y-1 text-black">
+                    {section.content.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-700">{section.content}</p>
+                )}
               </div>
-            ) : (
-              <div className="bg-white shadow rounded-lg p-6 flex items-center justify-center h-64">
-                <div className="text-center">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No resume generated yet</h3>
-                  <p className="mt-1 text-sm text-gray-900">Fill out the form and click "Generate Resume" to create your ATS-optimized resume.</p>
-                </div>
+            ))}
+        </div>
+        
+        {/* Optimization Tips - Only show if they exist */}
+        {generatedResume.atsOptimizationTips && generatedResume.atsOptimizationTips.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold mb-2 text-gray-800">ATS Optimization Tips</h3>
+            <ul className="list-disc pl-5 space-y-1 text-black">
+              {generatedResume.atsOptimizationTips.map((tip, index) => (
+                <li key={index}>{tip}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {/* Keywords - Only show if they exist */}
+        {generatedResume.keywords && generatedResume.keywords.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2 text-black">Important Keywords</h3>
+            <div className="flex flex-wrap gap-2">
+              {generatedResume.keywords.map((keyword, index) => (
+                <span key={index} className="px-3 py-1 bg-gray-200 text-gray-800 rounded-full text-sm">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+  ) : (
+              <div className="flex items-center justify-center h-64 bg-gray-500 rounded-md">
+                <p className="text-black">Your generated resume will appear here</p>
               </div>
             )}
           </div>

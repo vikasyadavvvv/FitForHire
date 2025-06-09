@@ -1,2 +1,22 @@
 @import "tailwindcss";
 
+/* Force color fallbacks for print media */
+@media print {
+  * {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+  }
+}
+
+/* Alternative: Specific OKLCH fallbacks */
+.your-oklch-element {
+  color: oklch(75% 0.15 250);
+  background: oklch(95% 0.02 100);
+}
+
+@media print {
+  .your-oklch-element {
+    color: #9ad2f8 !important; /* Approximate HEX fallback */
+    background: #f8f9fa !important;
+  }
+}
