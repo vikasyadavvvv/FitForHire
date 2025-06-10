@@ -178,7 +178,7 @@ const downloadText = () => {
   return (
     <div className="min-h-screen bg-black py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-center text-blue-700 mb-8">ATS-Optimized Resume Generator</h1>
+        <h1 className="text-3xl font-bold text-center text-blue-700 mb-8">Professional Resumes Made Easy and ATS-Friendlyr</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Section */}
