@@ -273,6 +273,7 @@ router.post("/generate-resume",  async (req, res) => {
     jobPosition,
     // ↑ Mandatory fields
     Fullname,
+    Address,
     email,
     phone,
     education,
@@ -288,7 +289,7 @@ router.post("/generate-resume",  async (req, res) => {
   } = req.body;
 
   // Basic validation
-  if (!jobPosition || !Fullname || !email || !phone || !education || !skills) {
+  if (!jobPosition || !Fullname || !Address || !email || !phone || !education || !skills) {
     return res.status(400).json({
       message: "Missing required fields: jobPosition,  Fullname, email, phone, education, and skills are mandatory"
     });
@@ -303,6 +304,7 @@ JOB POSITION: ${jobPosition}
 
 CANDIDATE DETAILS:
  -Fullname:${Fullname}
+ -Address:${Address}
 - Email: ${email}
 - Phone: ${phone}
 - Education: ${education}

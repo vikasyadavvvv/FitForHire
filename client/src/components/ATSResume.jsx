@@ -6,6 +6,7 @@ const ATSResume = () => {
   const [formData, setFormData] = useState({
     jobPosition: '',
     Fullname: '',
+    Address:"",
     email: '',
     phone: '',
     education: '',
@@ -80,8 +81,8 @@ const ATSResume = () => {
   };
 
   const generateResume = async () => {
-    if (!formData.jobPosition || !formData.Fullname || !formData.email || !formData.phone || !formData.education || !formData.skills) {
-      setError('Missing required fields: jobPosition, Fullname, email, phone, education, and skills are mandatory');
+    if (!formData.jobPosition || !formData.Fullname || !formData.Address || !formData.email || !formData.phone || !formData.education || !formData.skills) {
+      setError('Missing required fields: jobPosition, Fullname, Address, email, phone, education, and skills are mandatory');
       return;
     }
 
@@ -207,6 +208,19 @@ const downloadText = () => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="John Doe"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address*</label>
+                <input
+                  type="text"
+                  name="Address"
+                  value={formData.Address}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="India Maharashtra"
                   required
                 />
               </div>
@@ -545,16 +559,16 @@ const downloadText = () => {
         
         <div id="resume-preview" className="p-6 border border-gray-200 rounded-md">
           {/* Contact Info - Always shown */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">{formData.Fullname}</h1>
-            <div className="flex flex-wrap gap-x-4 text-sm text-gray-600 mt-1">
-              <span>{formData.email}</span>
-              <span>{formData.phone}</span>
-              {formData.linkedinUrl && <span>{formData.linkedinUrl}</span>}
-              {formData.portfolioUrl && <span>{formData.portfolioUrl}</span>}
-            </div>
-          </div>
-          
+<div id="resume-preview" className="p-6 border border-gray-200 rounded-md">
+  {/* Contact Info - Always shown */}
+  <div className="mb-6">
+    <h1 className="text-xl font-bold text-gray-800">{formData.Fullname}</h1>
+
+    {/* Email & Phone - inline with gap */}
+
+  </div>
+</div>
+
           {/* Professional Summary - Always shown */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">Professional Summary</h2>
@@ -562,28 +576,32 @@ const downloadText = () => {
           </div>
           
           {/* Dynamic Sections - Only show if they have content */}
-          {generatedResume.resumeSections
-            .filter(section => {
-              // Filter out empty sections
-              if (Array.isArray(section.content)) {
-                return section.content.length > 0;
-              }
-              return section.content && section.content.trim() !== '';
-            })
-            .map((section, index) => (
-              <div key={index} className="mb-6">
-                <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">{section.sectionName}</h2>
-                {Array.isArray(section.content) ? (
-                  <ul className="list-disc pl-5 space-y-1 text-black">
-                    {section.content.map((item, i) => (
-                      <li key={i}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-gray-700">{section.content}</p>
-                )}
-              </div>
-            ))}
+        {generatedResume.resumeSections
+  .filter(section => {
+    // Filter out empty sections
+    if (Array.isArray(section.content)) {
+      return section.content.length > 0;
+    }
+    return section.content && section.content.trim() !== '';
+  })
+  .reverse() // 🔁 Reverse the filtered sections
+  .map((section, index) => (
+    <div key={index} className="mb-6">
+      <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">
+        {section.sectionName}
+      </h2>
+      {Array.isArray(section.content) ? (
+        <ul className="list-disc pl-5 space-y-1 text-black">
+          {section.content.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-700">{section.content}</p>
+      )}
+    </div>
+  ))}
+
         </div>
         
         {/* Optimization Tips - Only show if they exist */}
