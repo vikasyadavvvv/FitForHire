@@ -13,6 +13,7 @@ import UploadForm from "./components/UploadForm";
 import ResumeAnalyzer from "./components/ResumeAnalyzer";
 import { useAuth } from '@clerk/clerk-react';
 import ATSResume from "./components/ATSResume";
+import ResumeAnalyzerFooter from "./components/Footer";
 // Inside your component:
 
 
@@ -58,6 +59,8 @@ console.log('Auth state:', { isLoaded, userId });
             <Route path='/create-ats-resume' element={<ATSResume/>}></Route>
             
           </Routes>
+                    <ResumeAnalyzerFooter/>
+
         </div>
       </SignedIn>
 
@@ -101,9 +104,7 @@ export default function App() {
   return (
    
     <HashRouter>
-
         <AppRoutes />
-
     </HashRouter>
   );
 }

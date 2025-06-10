@@ -182,25 +182,25 @@ const downloadText = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Section */}
-          <div className="bg-gray-500 p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Personal Information</h2>
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4 text-gray-200">Personal Information</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Job Position You're Applying For*</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Job Position You're Applying For*</label>
                 <input
                   type="text"
                   name="jobPosition"
                   value={formData.jobPosition}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Software Engineer"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name*</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Full Name*</label>
                 <input
                   type="text"
                   name="Fullname"
@@ -213,7 +213,7 @@ const downloadText = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address*</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Address*</label>
                 <input
                   type="text"
                   name="Address"
@@ -226,7 +226,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email*</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Email*</label>
                 <input
                   type="email"
                   name="email"
@@ -239,7 +239,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone*</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Phone*</label>
                 <input
                   type="tel"
                   name="phone"
@@ -252,7 +252,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Education*</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Education*</label>
                 <textarea
                   name="education"
                   value={formData.education}
@@ -265,7 +265,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Skills (comma separated)*</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Skills (comma separated)*</label>
                 <textarea
                   name="skills"
                   value={formData.skills}
@@ -278,7 +278,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Portfolio URL</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Portfolio URL</label>
                 <input
                   type="url"
                   name="portfolioUrl"
@@ -290,7 +290,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">LinkedIn URL</label>
                 <input
                   type="url"
                   name="linkedinUrl"
@@ -302,12 +302,12 @@ const downloadText = () => {
               </div>
             </div>
             
-            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-800">Work Experience</h2>
+            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-200">Work Experience</h2>
             {formData.workExperience.map((exp, index) => (
               <div key={index} className="mb-4 p-4 border border-gray-200 rounded-lg">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Role</label>
+                    <label className="block text-sm font-medium text-gray-200 mb-1">Job Role</label>
                     <input
                       type="text"
                       value={exp.role}
@@ -317,7 +317,7 @@ const downloadText = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                    <label className="block text-sm font-medium text-gray-200 mb-1">Company</label>
                     <input
                       type="text"
                       value={exp.company}
@@ -329,7 +329,7 @@ const downloadText = () => {
                 </div>
                 
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                  <label className="block text-sm font-medium text-gray-200 mb-1">Duration</label>
                   <input
                     type="text"
                     value={exp.duration}
@@ -340,7 +340,7 @@ const downloadText = () => {
                 </div>
                 
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-200 mb-1">Description</label>
                   <textarea
                     value={exp.description}
                     onChange={(e) => handleExperienceChange(index, 'description', e.target.value)}
@@ -363,16 +363,16 @@ const downloadText = () => {
             <button
               type="button"
               onClick={addExperience}
-              className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+              className="mt-2 px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300 transition-colors"
             >
               + Add Work Experience
             </button>
             
-            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-800">Projects</h2>
+            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-200">Projects</h2>
             {formData.projects.map((proj, index) => (
               <div key={index} className="mb-4 p-4 border border-gray-200 rounded-lg">
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Project Title</label>
+                  <label className="block text-sm font-medium text-gray-200 mb-1">Project Title</label>
                   <input
                     type="text"
                     value={proj.title}
@@ -383,7 +383,7 @@ const downloadText = () => {
                 </div>
                 
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-200 mb-1">Description</label>
                   <textarea
                     value={proj.description}
                     onChange={(e) => handleProjectChange(index, 'description', e.target.value)}
@@ -394,7 +394,7 @@ const downloadText = () => {
                 </div>
                 
                 <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Technologies Used</label>
+                  <label className="block text-sm font-medium text-gray-200 mb-1">Technologies Used</label>
                   <input
                     type="text"
                     value={proj.technologies}
@@ -422,11 +422,11 @@ const downloadText = () => {
               + Add Project
             </button>
             
-            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-800">Additional Information</h2>
+            <h2 className="text-xl font-semibold mt-8 mb-4 text-gray-200">Additional Information</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Certifications</label>
                 {formData.certifications.map((cert, index) => (
                   <div key={index} className="flex mb-2">
                     <input
@@ -457,7 +457,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Languages</label>
                 {formData.languages.map((lang, index) => (
                   <div key={index} className="flex mb-2">
                     <input
@@ -488,7 +488,7 @@ const downloadText = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Achievements</label>
+                <label className="block text-sm font-medium text-gray-200 mb-1">Achievements</label>
                 {formData.achievements.map((ach, index) => (
                   <div key={index} className="flex mb-2">
                     <textarea
@@ -537,8 +537,8 @@ const downloadText = () => {
           </div>
           
           {/* Resume Preview Section */}
-          <div className="bg-gray-500 p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Resume Preview</h2>
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold mb-4 text-white">Resume Preview</h2>
             
             {generatedResume ? (
                 <div>
@@ -562,7 +562,7 @@ const downloadText = () => {
 <div id="resume-preview" className="p-6 border border-gray-200 rounded-md">
   {/* Contact Info - Always shown */}
   <div className="mb-6">
-    <h1 className="text-xl font-bold text-gray-800">{formData.Fullname}</h1>
+    <h1 className="text-xl font-bold text-white">{formData.Fullname}</h1>
 
     {/* Email & Phone - inline with gap */}
 
@@ -572,7 +572,7 @@ const downloadText = () => {
           {/* Professional Summary - Always shown */}
           <div className="mb-6">
             <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">Professional Summary</h2>
-            <p className="text-black">{generatedResume.professionalSummary}</p>
+            <p className="text-white">{generatedResume.professionalSummary}</p>
           </div>
           
           {/* Dynamic Sections - Only show if they have content */}
@@ -591,13 +591,13 @@ const downloadText = () => {
         {section.sectionName}
       </h2>
       {Array.isArray(section.content) ? (
-        <ul className="list-disc pl-5 space-y-1 text-black">
+        <ul className="list-disc pl-5 space-y-1 text-white">
           {section.content.map((item, i) => (
             <li key={i}>{item}</li>
           ))}
         </ul>
       ) : (
-        <p className="text-gray-700">{section.content}</p>
+        <p className="text-white">{section.content}</p>
       )}
     </div>
   ))}
@@ -607,8 +607,8 @@ const downloadText = () => {
         {/* Optimization Tips - Only show if they exist */}
         {generatedResume.atsOptimizationTips && generatedResume.atsOptimizationTips.length > 0 && (
           <div className="mt-8">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">ATS Optimization Tips</h3>
-            <ul className="list-disc pl-5 space-y-1 text-black">
+            <h3 className="text-lg font-semibold mb-2 text-white">ATS Optimization Tips</h3>
+            <ul className="list-disc pl-5 space-y-1 text-white">
               {generatedResume.atsOptimizationTips.map((tip, index) => (
                 <li key={index}>{tip}</li>
               ))}
@@ -619,7 +619,7 @@ const downloadText = () => {
         {/* Keywords - Only show if they exist */}
         {generatedResume.keywords && generatedResume.keywords.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-lg font-semibold mb-2 text-black">Important Keywords</h3>
+            <h3 className="text-lg font-semibold mb-2 text-gray-200">Important Keywords</h3>
             <div className="flex flex-wrap gap-2">
               {generatedResume.keywords.map((keyword, index) => (
                 <span key={index} className="px-3 py-1 bg-gray-200 text-gray-800 rounded-full text-sm">
@@ -631,8 +631,8 @@ const downloadText = () => {
         )}
       </div>
   ) : (
-              <div className="flex items-center justify-center h-64 bg-gray-500 rounded-md">
-                <p className="text-black">Your generated resume will appear here</p>
+              <div className="flex items-center justify-center h-64 bg-gradient-to-br from-gray-900 to-gray-800 rounded-md">
+                <p className="text-white">Your generated resume will appear here</p>
               </div>
             )}
           </div>
