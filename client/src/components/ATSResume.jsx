@@ -562,7 +562,7 @@ const downloadText = () => {
 <div id="resume-preview" className="p-6 border border-gray-200 rounded-md">
   {/* Contact Info - Always shown */}
   <div className="mb-6">
-    <h1 className="text-xl font-bold text-white">{formData.Fullname}</h1>
+    <h1 className="font-bold text-white">{formData.Fullname}</h1>
 
     {/* Email & Phone - inline with gap */}
 
@@ -571,7 +571,7 @@ const downloadText = () => {
 
           {/* Professional Summary - Always shown */}
           <div className="mb-6">
-            <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">Professional Summary</h2>
+            <h2 className="font-semibold border-b border-gray-300 pb-1 mb-2">Professional Summary</h2>
             <p className="text-white">{generatedResume.professionalSummary}</p>
           </div>
           
@@ -587,7 +587,7 @@ const downloadText = () => {
   .reverse() // 🔁 Reverse the filtered sections
   .map((section, index) => (
     <div key={index} className="mb-6">
-      <h2 className="text-lg font-semibold border-b border-gray-300 pb-1 mb-2">
+      <h2 className="font-semibold border-b border-gray-300 pb-1 mb-2">
         {section.sectionName}
       </h2>
       {Array.isArray(section.content) ? (
