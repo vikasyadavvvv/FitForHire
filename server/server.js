@@ -9,7 +9,21 @@ dotenv.config();
 const app = express();
 
 
-app.use(cors())
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', 'https://fit-for-hire-livid.vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+// Handle preflight OPTIONS requests
+app.options('*', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', 'https://fit-for-hire-livid.vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.status(200).end();
+});
+
 // File upload config
 app.use(
   fileUpload({
