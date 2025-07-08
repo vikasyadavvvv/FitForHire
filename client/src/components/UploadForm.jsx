@@ -94,7 +94,7 @@ export default function UploadForm() {
     const formData = new FormData();
     formData.append("resume", file);
 
-    const res = await fetch("https://fitforhire.onrender.com/api/resume/resume", {
+    const res = await fetch("https://fit-for-hire-sauu.vercel.app/api/resume/resume", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

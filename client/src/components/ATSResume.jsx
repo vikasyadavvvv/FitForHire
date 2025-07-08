@@ -90,7 +90,7 @@ const ATSResume = () => {
     setError(null);
 
     try {
-      const response = await fetch('https://fitforhire.onrender.com/api/resume/generate-resume', {
+      const response = await fetch('https://fit-for-hire-sauu.vercel.app/api/resume/generate-resume', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
