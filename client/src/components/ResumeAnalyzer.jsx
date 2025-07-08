@@ -91,7 +91,7 @@ export default function ResumeAnalyzer() {
     try {
       const token = await getToken();
 
-      const res = await fetch("https://reactai-1.onrender.com/api/resume/analyze", {
+      const res = await fetch("https://fitforhire.onrender.com/api/resume/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
