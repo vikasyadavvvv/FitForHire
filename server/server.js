@@ -8,8 +8,8 @@ import resumeRoutes from "./routes/resume.js";
 dotenv.config();
 const app = express();
 
-// Clerk middleware
 
+app.use(cors())
 // File upload config
 app.use(
   fileUpload({
@@ -18,16 +18,7 @@ app.use(
   })
 );
 
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://fit-for-hire-livid.vercel.app'
-  ],
-  methods: ['GET', 'POST', 'OPTIONS'],
-  credentials: true
-}));
 
-app.options('*', cors()); // very important!
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
