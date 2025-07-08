@@ -90,7 +90,7 @@ const ATSResume = () => {
     setError(null);
 
     try {
-      const response = await fetch('https://fitforhire-production.up.railway.app/api/resume/generate-resume', {
+      const response = await fetch('https://reactai-1.onrender.com/api/resume/generate-resume', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
