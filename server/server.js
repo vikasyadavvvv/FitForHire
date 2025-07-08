@@ -19,10 +19,15 @@ app.use(
 );
 
 app.use(cors({
-  origin: 'https://fit-for-hire-livid.vercel.app', 
+  origin: [
+    'http://localhost:5173',
+    'https://fit-for-hire-livid.vercel.app'
+  ],
   methods: ['GET', 'POST', 'OPTIONS'],
   credentials: true
 }));
+
+app.options('*', cors()); // very important!
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
