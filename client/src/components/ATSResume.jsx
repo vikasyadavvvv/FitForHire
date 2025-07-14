@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import { FiFileText } from 'react-icons/fi';
+
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Link } from '@react-pdf/renderer';
+
+
 
 const ATSResume = () => {
   const [formData, setFormData] = useState({
@@ -114,71 +117,123 @@ const ATSResume = () => {
     }
   };
 
- const downloadPDF = async () => {
-  try {
-    setLoading(true);
-    setError('');
+ 
 
-    // Create a print-specific stylesheet
-    const printCSS = `
-      @media print {
-        * {
-          color: #000 !important;
-          background: #fff !important;
-        }
-        body {
-          font-family: Arial, sans-serif;
-          line-height: 1.5;
-        }
-        a { text-decoration: none; }
-      }
-    `;
+  function renderTextWithLinks(text) {
+  if (!text) return null;
 
-    // Create a clone with print styles
-    const resumeElement = document.getElementById('resume-preview');
-    const clone = resumeElement.cloneNode(true);
-    
-    // Add print styles
-    const style = document.createElement('style');
-    style.textContent = printCSS;
-    clone.prepend(style);
-    
-    // Open print dialog
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(clone.outerHTML);
-    printWindow.document.close();
-    printWindow.focus();
-    
-    // Wait for content to load
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Trigger print (which includes PDF save option)
-    printWindow.print();
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
 
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    setError('Failed to generate PDF. Please use your browser\'s print function instead.');
-  } finally {
-    setLoading(false);
-  }
+  return parts.map((part, idx) =>
+    part.match(/https?:\/\/[^\s]+/) ? (
+      <a key={idx} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  );
+}
+
+const styles = StyleSheet.create({
+  page: { padding: 24, fontSize: 10, fontFamily: 'Times-Roman' },
+  name: { fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
+  contact: { marginBottom: 4 },
+  sectionTitle: { fontWeight: 'bold', marginTop: 6, textDecoration: 'underline' },
+  text: { marginBottom: 2 },
+  link: { color: 'blue', textDecoration: 'underline' }
+});
+
+const ResumePDFDocument = ({ formData, generatedResume }) => (
+  <Document>
+    <Page style={styles.page}>
+      {/* Name */}
+      <Text style={styles.name}>{formData.Fullname}</Text>
+      
+      {/* Contact */}
+      <Text style={styles.contact}>
+        {formData.Address} | {formData.email} | {formData.phone}
+      </Text>
+
+      {/* LinkedIn & Portfolio - Fixed URL handling */}
+      {(formData.linkedinUrl || formData.portfolioUrl) && (
+        <Text style={styles.contact}>
+          {formData.linkedinUrl && (
+            <Link style={styles.link} src={formData.linkedinUrl.startsWith('http') ? formData.linkedinUrl : `https://${formData.linkedinUrl}`}>
+              LinkedIn
+            </Link>
+          )}
+          {formData.linkedinUrl && formData.portfolioUrl && ' | '}
+          {formData.portfolioUrl && (
+            <Link style={styles.link} src={formData.portfolioUrl.startsWith('http') ? formData.portfolioUrl : `https://${formData.portfolioUrl}`}>
+              Portfolio
+            </Link>
+          )}
+        </Text>
+      )}
+
+      {/* Professional Summary - Fixed typo (generatedResume) */}
+      {generatedResume?.professionalSummary && (
+        <>
+          <Text style={styles.sectionTitle}>Professional Summary</Text>
+          <Text style={styles.text}>{generatedResume.professionalSummary}</Text>
+        </>
+      )}
+
+      {/* Dynamic Sections - Fixed skills display and URLs */}
+      {generatedResume?.resumeSections
+        ?.filter(sec => sec.sectionName.toLowerCase() !== 'contact information')
+        .map((section, idx) => (
+          <View key={`section-${idx}`} wrap={false}>
+            <Text style={styles.sectionTitle}>{section.sectionName}</Text>
+            {Array.isArray(section.content)
+              ? section.sectionName.toLowerCase() === 'skills' ? (
+                  <Text style={styles.text}>
+                    {section.content.map((skill, i) => (
+                      <Text key={`skill-${idx}-${i}`}>
+                        {i > 0 ? ', ' : ''}
+                        {skill}
+                      </Text>
+                    ))}
+                  </Text>
+                ) : (
+                  section.content.map((item, i) => (
+                    <Text key={`item-${idx}-${i}`} style={styles.text}>
+                      • {renderPdfTextWithLinks(item)}
+                    </Text>
+                  ))
+                )
+              : <Text style={styles.text}>{renderPdfTextWithLinks(section.content)}</Text>}
+          </View>
+        ))}
+    </Page>
+  </Document>
+);
+
+// Add this helper function outside your component
+const renderPdfTextWithLinks = (text) => {
+  if (!text) return '';
+  
+  const textStr = Array.isArray(text) ? text.join(' ') : String(text);
+  const parts = textStr.split(/(https?:\/\/[^\s]+)/g);
+  
+  return parts.map((part, idx) => {
+    if (part.match(/https?:\/\/[^\s]+/)) {
+      return (
+        <Link key={`link-${idx}`} src={part.startsWith('http') ? part : `https://${part}`}>
+          {part}
+        </Link>
+      );
+    }
+    return part;
+  });
 };
 
-const downloadText = () => {
-    const resumeElement = document.getElementById('resume-preview');
-    const text = resumeElement.innerText;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${formData.Fullname.replace(/\s+/g, '_')}_Resume.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <div className="min-h-screen bg-black py-8 px-4">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-center text-blue-700 mb-8">Professional Resumes Made Easy and ATS-Friendly</h1>
+        <h1 className="text-3xl font-bold text-center text-white mb-8">Professional Resumes Made Easy and ATS-Friendly</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Section */}
@@ -543,67 +598,85 @@ const downloadText = () => {
             {generatedResume ? (
                 <div>
         <div className="flex space-x-4 mb-4">
-          <button
-            onClick={downloadPDF}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-          >
-            Download PDF 
-          </button>
-          <button
-            onClick={downloadText}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Download Text
-          </button>
+      <PDFDownloadLink
+  document={<ResumePDFDocument formData={formData} generatedResume={generatedResume} />}
+  fileName="My_AI_Optimized_Resume.pdf"
+  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+>
+  {({ loading, error }) => ( // Add error destructuring
+    loading ? 'Preparing PDF...' : '📄 Download PDF'
+  )}
+</PDFDownloadLink>
+
         </div>
         
-        <div id="resume-preview" className="p-6 border border-gray-200 rounded-md">
-          {/* Contact Info - Always shown */}
-<div id="resume-preview" className="p-6 border border-gray-200 rounded-md">
-  {/* Contact Info - Always shown */}
-  <div className="mb-6">
-    <h1 className="font-bold text-white">{formData.Fullname}</h1>
+     <div
+  id="resume-preview"
+  className="p-6 border border-gray-200 rounded-md bg-white font-serif text-xs sm:text-sm leading-snug text-gray-900"
+>
+  {/* Name */}
+  <h1 className="text-xl sm:text-2xl font-bold text-center mb-2">{formData.Fullname}</h1>
 
-    {/* Email & Phone - inline with gap */}
-
+  {/* Contact Info */}
+  <div className="text-center mb-1 space-x-2 text-gray-700">
+    {formData.Address && <span>{formData.Address}</span>}
+    {formData.email && <span>| {formData.email}</span>}
+    {formData.phone && <span>| {formData.phone}</span>}
   </div>
+
+  {/* LinkedIn & Portfolio */}
+  <div className="text-center mb-4 space-x-2 text-blue-600 underline">
+    {formData.linkedinUrl && (
+      <a href={formData.linkedinUrl} target="_blank" rel="noopener noreferrer">
+        LinkedIn
+      </a>
+    )}
+    {formData.portfolioUrl && (
+      <a href={formData.portfolioUrl} target="_blank" rel="noopener noreferrer">
+        | Portfolio
+      </a>
+    )}
+  </div>
+
+  {/* Professional Summary */}
+  {generatedResume.professionalSummary && (
+    <div className="mb-3">
+      <h2 className="font-semibold border-b border-gray-400 pb-0.5 mb-1 text-[0.7rem] uppercase tracking-wide">
+        Professional Summary
+      </h2>
+      <p className="text-gray-800">{generatedResume.professionalSummary}</p>
+    </div>
+  )}
+
+  {/* Dynamic AI Sections (excluding "Contact Information") */}
+  {generatedResume.resumeSections && generatedResume.resumeSections
+    .filter(section => section.sectionName.toLowerCase() !== 'contact information')
+    .map((section, idx) => (
+      <div key={idx} className="mb-3">
+        <h2 className="font-semibold border-b border-gray-400 pb-0.5 mb-1 text-[0.7rem] uppercase tracking-wide">
+          {section.sectionName}
+        </h2>
+        {Array.isArray(section.content) ? (
+          section.sectionName.toLowerCase() === 'skills' ? (
+            // Skills: show inline, separated by commas
+            <p className="text-gray-800">{section.content.join(', ')}</p>
+          ) : (
+            <ul className="pl-4 list-disc text-gray-800 space-y-0.5">
+              {section.content.map((item, i) => (
+                <li key={i}>
+                  {renderTextWithLinks(item)}
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+          <p className="text-gray-800">{renderTextWithLinks(section.content)}</p>
+        )}
+      </div>
+    ))}
+
 </div>
 
-          {/* Professional Summary - Always shown */}
-          <div className="mb-6">
-            <h2 className="font-semibold border-b border-gray-300 pb-1 mb-2">Professional Summary</h2>
-            <p className="text-white">{generatedResume.professionalSummary}</p>
-          </div>
-          
-          {/* Dynamic Sections - Only show if they have content */}
-        {generatedResume.resumeSections
-  .filter(section => {
-    // Filter out empty sections
-    if (Array.isArray(section.content)) {
-      return section.content.length > 0;
-    }
-    return section.content && section.content.trim() !== '';
-  })
-  .reverse() // 🔁 Reverse the filtered sections
-  .map((section, index) => (
-    <div key={index} className="mb-6">
-      <h2 className="font-semibold border-b border-gray-300 pb-1 mb-2">
-        {section.sectionName}
-      </h2>
-      {Array.isArray(section.content) ? (
-        <ul className="list-disc pl-5 space-y-1 text-white">
-          {section.content.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-white">{section.content}</p>
-      )}
-    </div>
-  ))}
-
-        </div>
-        
         {/* Optimization Tips - Only show if they exist */}
         {generatedResume.atsOptimizationTips && generatedResume.atsOptimizationTips.length > 0 && (
           <div className="mt-8">
@@ -631,9 +704,10 @@ const downloadText = () => {
         )}
       </div>
   ) : (
-              <div className="flex items-center justify-center h-64 bg-gradient-to-br from-gray-900 to-gray-800 rounded-md">
-                <p className="text-white">Your generated resume will appear here</p>
-              </div>
+           <div className="flex items-center justify-center h-64 bg-gradient-to-br from-gray-900 to-gray-800 rounded-md">
+  <FiFileText className="text-white text-6xl opacity-70" />
+</div>
+
             )}
           </div>
         </div>
