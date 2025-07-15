@@ -144,50 +144,91 @@ const styles = StyleSheet.create({
   link: { color: 'blue', textDecoration: 'underline' }
 });
 
-const ResumePDFDocument = ({ formData, generatedResume }) => (
-  <Document>
-    <Page style={styles.page}>
-      {/* Name */}
-      <Text style={styles.name}>{formData.Fullname}</Text>
-      
-      {/* Contact */}
-      <Text style={styles.contact}>
-        {formData.Address} | {formData.email} | {formData.phone}
-      </Text>
+const ResumePDFDocument = ({ formData, generatedResume }) => {
+  // Enhanced PDF link renderer with custom display text
+  const renderPdfTextWithLinks = (text) => {
+    if (!text) return '';
+    
+    const textStr = Array.isArray(text) ? text.join(' ') : String(text);
+    const parts = textStr.split(/(https?:\/\/[^\s]+)/g);
+    
+    return parts.map((part, idx) => {
+      if (part.match(/https?:\/\/[^\s]+/)) {
+        const url = part.startsWith('http') ? part : `https://${part}`;
+        let displayText = 'View';
+        
+        if (url.includes('linkedin.com')) displayText = 'LinkedIn';
+        if (url.includes('certificate') || url.includes('credential')) displayText = 'View Certificate';
+        if (url.includes('achievement')) displayText = 'View Achievement';
+        if (url.includes('portfolio')) displayText = 'Portfolio';
+        
+        return (
+          <Link key={`link-${idx}`} src={url} style={styles.link}>
+            {displayText}
+          </Link>
+        );
+      }
+      return part;
+    });
+  };
 
-      {/* LinkedIn & Portfolio - Fixed URL handling */}
-      {(formData.linkedinUrl || formData.portfolioUrl) && (
+  return (
+    <Document>
+      <Page style={styles.page}>
+        {/* Name */}
+        <Text style={styles.name}>{formData.Fullname}</Text>
+        
+        {/* Contact */}
         <Text style={styles.contact}>
-          {formData.linkedinUrl && (
-            <Link style={styles.link} src={formData.linkedinUrl.startsWith('http') ? formData.linkedinUrl : `https://${formData.linkedinUrl}`}>
-              LinkedIn
-            </Link>
-          )}
-          {formData.linkedinUrl && formData.portfolioUrl && ' | '}
-          {formData.portfolioUrl && (
-            <Link style={styles.link} src={formData.portfolioUrl.startsWith('http') ? formData.portfolioUrl : `https://${formData.portfolioUrl}`}>
-              Portfolio
-            </Link>
-          )}
+          {[formData.Address, formData.email, formData.phone]
+            .filter(Boolean)
+            .join(' | ')}
         </Text>
-      )}
 
-      {/* Professional Summary - Fixed typo (generatedResume) */}
-      {generatedResume?.professionalSummary && (
-        <>
-          <Text style={styles.sectionTitle}>Professional Summary</Text>
-          <Text style={styles.text}>{generatedResume.professionalSummary}</Text>
-        </>
-      )}
+        {/* LinkedIn & Portfolio */}
+        {(formData.linkedinUrl || formData.portfolioUrl) && (
+          <Text style={styles.contact}>
+            {formData.linkedinUrl && (
+              <Link 
+                style={styles.link} 
+                src={formData.linkedinUrl.startsWith('http') ? formData.linkedinUrl : `https://${formData.linkedinUrl}`}
+              >
+                LinkedIn
+              </Link>
+            )}
+            {formData.linkedinUrl && formData.portfolioUrl && ' | '}
+            {formData.portfolioUrl && (
+              <Link 
+                style={styles.link} 
+                src={formData.portfolioUrl.startsWith('http') ? formData.portfolioUrl : `https://${formData.portfolioUrl}`}
+              >
+                Portfolio
+              </Link>
+            )}
+          </Text>
+        )}
 
-      {/* Dynamic Sections - Fixed skills display and URLs */}
-      {generatedResume?.resumeSections
-        ?.filter(sec => sec.sectionName.toLowerCase() !== 'contact information')
-        .map((section, idx) => (
-          <View key={`section-${idx}`} wrap={false}>
-            <Text style={styles.sectionTitle}>{section.sectionName}</Text>
-            {Array.isArray(section.content)
-              ? section.sectionName.toLowerCase() === 'skills' ? (
+        {/* Professional Summary */}
+        {generatedResume?.professionalSummary && (
+          <>
+            <Text style={styles.sectionTitle}>PROFESSIONAL SUMMARY</Text>
+            <Text style={styles.text}>
+              {renderPdfTextWithLinks(generatedResume.professionalSummary)}
+            </Text>
+          </>
+        )}
+
+        {/* Dynamic Sections */}
+        {generatedResume?.resumeSections
+          ?.filter(sec => sec.sectionName.toLowerCase() !== 'contact information')
+          .map((section, idx) => (
+            <View key={`section-${idx}`} wrap={false} style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {section.sectionName.toUpperCase()}
+              </Text>
+              
+              {Array.isArray(section.content) ? (
+                section.sectionName.toLowerCase() === 'skills' ? (
                   <Text style={styles.text}>
                     {section.content.map((skill, i) => (
                       <Text key={`skill-${idx}-${i}`}>
@@ -196,6 +237,16 @@ const ResumePDFDocument = ({ formData, generatedResume }) => (
                       </Text>
                     ))}
                   </Text>
+                ) : ['education', 'projects', 'certifications', 'languages', 'achievements'].includes(section.sectionName.toLowerCase()) ? (
+                  <View style={{ marginBottom: 8 }}>
+                    {section.content.map((item, i) => (
+                      <View key={`item-${idx}-${i}`} style={{ marginBottom: i < section.content.length - 1 ? 8 : 0 }}>
+                        <Text style={styles.text}>
+                          {renderPdfTextWithLinks(item)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 ) : (
                   section.content.map((item, i) => (
                     <Text key={`item-${idx}-${i}`} style={styles.text}>
@@ -203,13 +254,17 @@ const ResumePDFDocument = ({ formData, generatedResume }) => (
                     </Text>
                   ))
                 )
-              : <Text style={styles.text}>{renderPdfTextWithLinks(section.content)}</Text>}
-          </View>
-        ))}
-    </Page>
-  </Document>
-);
-
+              ) : (
+                <Text style={styles.text}>
+                  {renderPdfTextWithLinks(section.content)}
+                </Text>
+              )}
+            </View>
+          ))}
+      </Page>
+    </Document>
+  );
+};
 // Add this helper function outside your component
 const renderPdfTextWithLinks = (text) => {
   if (!text) return '';
@@ -219,9 +274,18 @@ const renderPdfTextWithLinks = (text) => {
   
   return parts.map((part, idx) => {
     if (part.match(/https?:\/\/[^\s]+/)) {
+      // Determine display text based on URL content
+      let displayText = 'View';
+      const url = part.startsWith('http') ? part : `https://${part}`;
+      
+      if (url.includes('linkedin.com')) displayText = 'LinkedIn';
+      if (url.includes('certificate') || url.includes('credential')) displayText = 'View Certificate';
+      if (url.includes('achievement')) displayText = 'View Achievement';
+      if (url.includes('portfolio')) displayText = 'Portfolio';
+      
       return (
-        <Link key={`link-${idx}`} src={part.startsWith('http') ? part : `https://${part}`}>
-          {part}
+        <Link key={`link-${idx}`} src={url}>
+          {displayText}
         </Link>
       );
     }
@@ -617,7 +681,7 @@ const handleDownloadClick = () => {
 </div>
         </div>
         
-     <div
+<div
   id="resume-preview"
   className="p-6 border border-gray-200 rounded-md bg-white font-serif text-xs sm:text-sm leading-snug text-gray-900"
 >
@@ -651,12 +715,12 @@ const handleDownloadClick = () => {
       <h2 className="font-semibold border-b border-gray-400 pb-0.5 mb-1 text-[0.7rem] uppercase tracking-wide">
         Professional Summary
       </h2>
-      <p className="text-gray-800">{generatedResume.professionalSummary}</p>
+      <p className="text-gray-800">{renderTextWithLinks(generatedResume.professionalSummary)}</p>
     </div>
   )}
 
-  {/* Dynamic AI Sections (excluding "Contact Information") */}
-  {generatedResume.resumeSections && generatedResume.resumeSections
+  {/* Dynamic AI Sections */}
+ {generatedResume.resumeSections && generatedResume.resumeSections
     .filter(section => section.sectionName.toLowerCase() !== 'contact information')
     .map((section, idx) => (
       <div key={idx} className="mb-3">
@@ -665,8 +729,16 @@ const handleDownloadClick = () => {
         </h2>
         {Array.isArray(section.content) ? (
           section.sectionName.toLowerCase() === 'skills' ? (
-            // Skills: show inline, separated by commas
             <p className="text-gray-800">{section.content.join(', ')}</p>
+          ) : ['education', 'projects', 'certifications', 'languages', 'achievements'].includes(section.sectionName.toLowerCase()) ? (
+            <div className="text-gray-800 space-y-2">
+              {section.content.map((item, i) => (
+                <div key={i}>
+                  {renderTextWithLinks(item)}
+                  {i < section.content.length - 1 && <div className="h-2"></div>}
+                </div>
+              ))}
+            </div>
           ) : (
             <ul className="pl-4 list-disc text-gray-800 space-y-0.5">
               {section.content.map((item, i) => (
@@ -681,8 +753,7 @@ const handleDownloadClick = () => {
         )}
       </div>
     ))}
-
-</div>
+    </div>
 
         {/* Optimization Tips - Only show if they exist */}
         {generatedResume.atsOptimizationTips && generatedResume.atsOptimizationTips.length > 0 && (
