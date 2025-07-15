@@ -229,6 +229,12 @@ const renderPdfTextWithLinks = (text) => {
   });
 };
 
+const handleDownloadClick = () => {
+  setTimeout(() => {
+    window.location.reload();
+  }, 2500);
+};
+
 
   return (
     <div className="min-h-screen bg-black py-8 px-4">
@@ -598,16 +604,17 @@ const renderPdfTextWithLinks = (text) => {
             {generatedResume ? (
                 <div>
         <div className="flex space-x-4 mb-4">
-      <PDFDownloadLink
-  document={<ResumePDFDocument formData={formData} generatedResume={generatedResume} />}
-  fileName="My_AI_Optimized_Resume.pdf"
-  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
->
-  {({ loading, error }) => ( // Add error destructuring
-    loading ? 'Preparing PDF...' : '📄 Download PDF'
-  )}
-</PDFDownloadLink>
-
+      <div onClick={handleDownloadClick}>
+  <PDFDownloadLink
+    document={<ResumePDFDocument formData={formData} generatedResume={generatedResume} />}
+    fileName="My_AI_Optimized_Resume.pdf"
+    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+  >
+    {({ loading, error }) => (
+      loading ? 'Preparing PDF...' : '📄 Download PDF'
+    )}
+  </PDFDownloadLink>
+</div>
         </div>
         
      <div

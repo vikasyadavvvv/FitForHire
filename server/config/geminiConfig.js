@@ -7,7 +7,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const getFitnessModel = () =>
   genAI.getGenerativeModel({
-    model: "gemini-1.5-flash-latest", // Updated to latest flash model
+    model: "gemini-2.0-flash", // Updated to latest flash model
     generationConfig: {
       temperature: 0.4,
       topP: 0.9,
