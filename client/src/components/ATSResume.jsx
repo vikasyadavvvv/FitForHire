@@ -146,32 +146,6 @@ const styles = StyleSheet.create({
 
 const ResumePDFDocument = ({ formData, generatedResume }) => {
   // Enhanced PDF link renderer with custom display text
-  const renderPdfTextWithLinks = (text) => {
-    if (!text) return '';
-    
-    const textStr = Array.isArray(text) ? text.join(' ') : String(text);
-    const parts = textStr.split(/(https?:\/\/[^\s]+)/g);
-    
-    return parts.map((part, idx) => {
-      if (part.match(/https?:\/\/[^\s]+/)) {
-        const url = part.startsWith('http') ? part : `https://${part}`;
-        let displayText = 'View';
-        
-        if (url.includes('linkedin.com')) displayText = 'LinkedIn';
-        if (url.includes('certificate') || url.includes('credential')) displayText = 'View Certificate';
-        if (url.includes('achievement')) displayText = 'View Achievement';
-        if (url.includes('portfolio')) displayText = 'Portfolio';
-        
-        return (
-          <Link key={`link-${idx}`} src={url} style={styles.link}>
-            {displayText}
-          </Link>
-        );
-      }
-      return part;
-    });
-  };
-
   return (
     <Document>
       <Page style={styles.page}>
@@ -265,33 +239,34 @@ const ResumePDFDocument = ({ formData, generatedResume }) => {
     </Document>
   );
 };
+
+ const renderPdfTextWithLinks = (text) => {
+    if (!text) return '';
+    
+    const textStr = Array.isArray(text) ? text.join(' ') : String(text);
+    const parts = textStr.split(/(https?:\/\/[^\s]+)/g);
+    
+    return parts.map((part, idx) => {
+      if (part.match(/https?:\/\/[^\s]+/)) {
+        const url = part.startsWith('http') ? part : `https://${part}`;
+        let displayText = 'View';
+        
+        if (url.includes('linkedin.com')) displayText = 'LinkedIn';
+        if (url.includes('certificate') || url.includes('credential')) displayText = 'View Certificate';
+        if (url.includes('achievement')) displayText = 'View Achievement';
+        if (url.includes('portfolio')) displayText = 'Portfolio';
+        
+        return (
+          <Link key={`link-${idx}`} src={url} style={styles.link}>
+            {displayText}
+          </Link>
+        );
+      }
+      return part;
+    });
+  };
+
 // Add this helper function outside your component
-const renderPdfTextWithLinks = (text) => {
-  if (!text) return '';
-  
-  const textStr = Array.isArray(text) ? text.join(' ') : String(text);
-  const parts = textStr.split(/(https?:\/\/[^\s]+)/g);
-  
-  return parts.map((part, idx) => {
-    if (part.match(/https?:\/\/[^\s]+/)) {
-      // Determine display text based on URL content
-      let displayText = 'View';
-      const url = part.startsWith('http') ? part : `https://${part}`;
-      
-      if (url.includes('linkedin.com')) displayText = 'LinkedIn';
-      if (url.includes('certificate') || url.includes('credential')) displayText = 'View Certificate';
-      if (url.includes('achievement')) displayText = 'View Achievement';
-      if (url.includes('portfolio')) displayText = 'Portfolio';
-      
-      return (
-        <Link key={`link-${idx}`} src={url}>
-          {displayText}
-        </Link>
-      );
-    }
-    return part;
-  });
-};
 
 const handleDownloadClick = () => {
   setTimeout(() => {
