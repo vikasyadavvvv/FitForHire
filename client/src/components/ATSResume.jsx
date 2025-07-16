@@ -211,7 +211,17 @@ const ResumePDFDocument = ({ formData, generatedResume }) => {
                       </Text>
                     ))}
                   </Text>
-                ) : ['education', 'projects', 'certifications', 'languages', 'achievements'].includes(section.sectionName.toLowerCase()) ? (
+                ) : section.sectionName.toLowerCase() === 'projects' ? (
+                  <View style={{ marginBottom: 8 }}>
+                    {section.content.map((item, i) => (
+                      <View key={`item-${idx}-${i}`} style={{ marginBottom: i < section.content.length - 1 ? 8 : 0 }}>
+                        <Text style={styles.text}>
+                          {renderPdfTextWithLinks(item, true)} {/* Pass true for project section */}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : ['education', 'certifications', 'languages', 'achievements'].includes(section.sectionName.toLowerCase()) ? (
                   <View style={{ marginBottom: 8 }}>
                     {section.content.map((item, i) => (
                       <View key={`item-${idx}-${i}`} style={{ marginBottom: i < section.content.length - 1 ? 8 : 0 }}>
@@ -240,32 +250,41 @@ const ResumePDFDocument = ({ formData, generatedResume }) => {
   );
 };
 
- const renderPdfTextWithLinks = (text) => {
-    if (!text) return '';
-    
-    const textStr = Array.isArray(text) ? text.join(' ') : String(text);
-    const parts = textStr.split(/(https?:\/\/[^\s]+)/g);
-    
-    return parts.map((part, idx) => {
-      if (part.match(/https?:\/\/[^\s]+/)) {
-        const url = part.startsWith('http') ? part : `https://${part}`;
-        let displayText = 'View';
-        
-        if (url.includes('linkedin.com')) displayText = 'LinkedIn';
-        if (url.includes('certificate') || url.includes('credential')) displayText = 'View Certificate';
-        if (url.includes('achievement')) displayText = 'View Achievement';
-        if (url.includes('portfolio')) displayText = 'Portfolio';
-        
+const renderPdfTextWithLinks = (text, isProjectSection = false) => {
+  if (!text) return '';
+  
+  const textStr = Array.isArray(text) ? text.join(' ') : String(text);
+  const parts = textStr.split(/(https?:\/\/[^\s]+)/g);
+  
+  return parts.map((part, idx) => {
+    if (part.match(/https?:\/\/[^\s]+/)) {
+      const url = part.startsWith('http') ? part : `https://${part}`;
+      
+      // For project sections, show the full URL
+      if (isProjectSection) {
         return (
           <Link key={`link-${idx}`} src={url} style={styles.link}>
-            {displayText}
+            {url}
           </Link>
         );
       }
-      return part;
-    });
-  };
-
+      
+      // Special cases for other sections
+      let displayText = 'View';
+      if (url.includes('linkedin.com')) displayText = 'LinkedIn';
+      if (url.includes('certificate') || url.includes('credential')) displayText = 'View Certificate';
+      if (url.includes('achievement')) displayText = 'View Achievement';
+      if (url.includes('portfolio')) displayText = 'Portfolio';
+      
+      return (
+        <Link key={`link-${idx}`} src={url} style={styles.link}>
+          {displayText}
+        </Link>
+      );
+    }
+    return part;
+  });
+};
 // Add this helper function outside your component
 
 const handleDownloadClick = () => {
@@ -695,7 +714,7 @@ const handleDownloadClick = () => {
   )}
 
   {/* Dynamic AI Sections */}
- {generatedResume.resumeSections && generatedResume.resumeSections
+  {generatedResume.resumeSections && generatedResume.resumeSections
     .filter(section => section.sectionName.toLowerCase() !== 'contact information')
     .map((section, idx) => (
       <div key={idx} className="mb-3">
@@ -705,7 +724,16 @@ const handleDownloadClick = () => {
         {Array.isArray(section.content) ? (
           section.sectionName.toLowerCase() === 'skills' ? (
             <p className="text-gray-800">{section.content.join(', ')}</p>
-          ) : ['education', 'projects', 'certifications', 'languages', 'achievements'].includes(section.sectionName.toLowerCase()) ? (
+          ) : section.sectionName.toLowerCase() === 'projects' ? (
+            <div className="text-gray-800 space-y-2">
+              {section.content.map((item, i) => (
+                <div key={i}>
+                  {renderTextWithLinks(item, true)} {/* Pass true to indicate it's a project section */}
+                  {i < section.content.length - 1 && <div className="h-2"></div>}
+                </div>
+              ))}
+            </div>
+          ) : ['education', 'certifications', 'languages', 'achievements'].includes(section.sectionName.toLowerCase()) ? (
             <div className="text-gray-800 space-y-2">
               {section.content.map((item, i) => (
                 <div key={i}>
@@ -728,8 +756,7 @@ const handleDownloadClick = () => {
         )}
       </div>
     ))}
-    </div>
-
+</div>
         {/* Optimization Tips - Only show if they exist */}
         {generatedResume.atsOptimizationTips && generatedResume.atsOptimizationTips.length > 0 && (
           <div className="mt-8">
