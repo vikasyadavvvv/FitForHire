@@ -1,7 +1,5 @@
 # FitForHire - AI-Powered Resume Optimization Platform
 
-![FitForHire Logo](https://via.placeholder.com/150) <!-- Replace with actual logo -->
-
 ## 🔍 Overview
 
 FitForHire is an intelligent resume analysis tool that leverages Google's Gemini AI to provide comprehensive feedback on resumes compared to job descriptions. The platform offers:
@@ -57,10 +55,3 @@ FitForHire is an intelligent resume analysis tool that leverages Google's Gemini
 - Google Gemini API key
 - Cloudinary account
 - Clerk account
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/FitForHire.git
-   cd FitForHire
