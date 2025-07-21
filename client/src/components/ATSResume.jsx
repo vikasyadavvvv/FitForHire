@@ -136,7 +136,7 @@ const ATSResume = () => {
 }
 
 const styles = StyleSheet.create({
-  page: { padding: 24, fontSize: 10, fontFamily: 'Times-Roman' },
+  page: { padding: 24, fontSize: 13, fontFamily: 'Times-Roman' },
   name: { fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
   contact: { marginBottom: 4 },
   sectionTitle: { fontWeight: 'bold', marginTop: 6, textDecoration: 'underline' },
